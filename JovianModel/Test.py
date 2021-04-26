@@ -97,5 +97,6 @@ def Test():
 	ax1 = _PlotComponent(utc,Bt,jrm09_analytic[1],jrm09_hybrid[1],
 			jrm09_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$',nox=True)
 	ax2 = _PlotComponent(utc,Bp,jrm09_analytic[2],jrm09_hybrid[2],
-			jrm09_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$',nox=True)
+			jrm09_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$',nox=False)
 	
+	plt.subplots_adjust(hspace=0.0)
