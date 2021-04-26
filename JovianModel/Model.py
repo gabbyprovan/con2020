@@ -2,7 +2,9 @@ import numpy as np
 from scipy.special import jv
 
 
-def Model(r, theta, phi, mu_i=139.6, i_rho = 16.7, r0=7.8, r1=51.4, d=3.6, xt=9.3, xp=-24.2, equation_type='hybrid'):
+def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
+			xp=-24.2,equation_type='hybrid',no_error_check=False,
+			Cartesian=False):
 	'''
 	Code to calculate the perturbation magnetic field produced by the 
 	Connerney (CAN) current sheet, which is represented by a finite disk 
@@ -18,9 +20,9 @@ def Model(r, theta, phi, mu_i=139.6, i_rho = 16.7, r0=7.8, r1=51.4, d=3.6, xt=9.
 	======
 	r : float
 		Radial distance, in Rj (System III)
-	t : float
+	theta : float
 		Colatitude, in radians (System III)
-	f : float
+	phi : float
 		longitude, right handed, in radians (System III)
 	mu_i : float
 		mu0i0/2 term (current sheet current density), in nT
@@ -42,17 +44,19 @@ def Model(r, theta, phi, mu_i=139.6, i_rho = 16.7, r0=7.8, r1=51.4, d=3.6, xt=9.
 		See notes below for more information.
 	no_error_check : bool
 		Do not do extra checks that inputs are valid.		
-
+	Cartesian : bool
+		If True, magnetic field is returned in Cartesian coordinates,
+		otherwise the returned values are in spherical polar coordinates
 
 	Returns
 	========
 	Magnetic field in SIII coordinates (right handed)
 	br : float
-		Radial field, in nT
+		Radial field, in nT (or Bx if Cartesian == true)
 	bt : float
-		Meridional field, in nT
+		Meridional field, in nT (or By if Cartesian == true)
 	bp : float
-		Azimuthal field, in nT
+		Azimuthal field, in nT (or Bz if Cartesian == true)
 
 	This code takes a hybrid approach to calculating the current sheet 
 	field, using the integral equations in some regions and the analytic 
@@ -92,19 +96,18 @@ def Model(r, theta, phi, mu_i=139.6, i_rho = 16.7, r0=7.8, r1=51.4, d=3.6, xt=9.
 	RJ Wilson did some speedups and re-formatting of lines, also March 2021
 	'''
 
+	if not no_error_check:
+		if not equation_type in ['analytic','hybrid','integral']:
+			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
 
-	print('Equation type is', equation_type)
-	if not equation_type in ['analytic','hybrid','integral']:
-		raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
+		if np.min(r) < 0 or np.max(r) > 200:
+			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
-	if np.min(r) < 0 or np.max(r) > 200:
-		raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
+		if np.min(theta) < 0 or np.max(theta) > np.pi:
+			raise SystemExit ('ERROR: CoLat must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?). Returning...')
 
-	if np.min(theta) < 0 or np.max(theta) > np.pi:
-		raise SystemExit ('ERROR: CoLat must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?). Returning...')
-
-	if np.min(phi)  < 0 or np.max(phi) > 2*np.pi:
-		raise SystemExit ('ERROR: Long must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
+		if np.min(phi)  < 0 or np.max(phi) > 2*np.pi:
+			raise SystemExit ('ERROR: Long must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
 
 
 #% Convert to cartesian coordinates and rotate into magnetic longitude
@@ -494,9 +497,11 @@ bt =  bx*cos_theta*cos_phi+by*cos_theta*sin_phi-bz*sin_theta#
 bp = -bx*          sin_phi+by*          cos_phi#
 	'''
 
+	if Cartesian:
+		return bx2,by2,bz
+
 	br =  bx2*sin_theta*cos_phi+by2*sin_theta*sin_phi+bz*cos_theta#
 	bt =  bx2*cos_theta*cos_phi+by2*cos_theta*sin_phi-bz*sin_theta#
 	bp = -bx2*          sin_phi+by2*          cos_phi#
 
-	returns=np.array([br,bt,bp])
-	return(returns)
+	return br,bt,bp
