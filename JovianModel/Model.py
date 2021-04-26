@@ -3,53 +3,94 @@ from scipy.special import jv
 
 
 def Model(r, theta, phi, mu_i=139.6, i_rho = 16.7, r0=7.8, r1=51.4, d=3.6, xt=9.3, xp=-24.2, equation_type='hybrid'):
+	'''
+	Code to calculate the perturbation magnetic field produced by the 
+	Connerney (CAN) current sheet, which is represented by a finite disk 
+	of current.	This disk has variable parameters including the current 
+	density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
+	is centered on the magnetic equator (shifted in longitude and tilted 
+	according to the dipole field parameters of an internal field model 
+	like VIP4 or JRM09). This 2020 version includes a radial current per 
+	Connerney et al. (2020), 
+	https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-'''
-Explanation
+	Inputs
+	======
+	r : float
+		Radial distance, in Rj (System III)
+	t : float
+		Colatitude, in radians (System III)
+	f : float
+		longitude, right handed, in radians (System III)
+	mu_i : float
+		mu0i0/2 term (current sheet current density), in nT
+	i_rho : float
+		azimuthal current term from Connerney et al., 2020
+	r0 : float
+		Inner edge of current disk in Rj
+	r1 : float
+		Outer edge of current disk in Rj
+	d : float
+		Current sheet half thickness in Rj
+	xt : float
+		Dipole tilt in degrees
+	xp : float
+		Dipole longitude (right handed) in degrees
+	equation_type: str
+		Define method for calculating the current sheet field, may be 
+		one of the following: 'hybrid'|'analytic'|'integral'
+		See notes below for more information.
+	no_error_check : bool
+		Do not do extra checks that inputs are valid.		
 
-CAN_SHEET_VARIABLE_2020_HYBRID
-Code to calculate the perturbation magnetic field produced by the Connerney (CAN) current sheet, which is represented by a finite disk of current
-This disk has variable parameters including the current density mu0i0, inner edge R0, outer edge R1, thickness D
-The disk is centered on the magnetic equator (shifted in longitude and tilted according to the dipole field parameters of an internal field model like VIP4 or JRM09)
-This 2020 version includes a radial current per Connerney et al. (2020), https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-Required inputs (System III):
-r - radial distance, in Rj
-t - colatitude, in radians
-f - longitude, right handed, in radians
-Optional inputs (unless user specifies, these default to values from Connerney et al., 2020):
-mu_i - mu0i0/2 term (current sheet current density), in nT
-i_rho_0 - azimuthal current term from Connerney et al., 2020
-r0 - inner edge of current disk in Rj
-r1 - outer edge of current disk in Rj
-d - current sheet half thickness in Rj
-xt - dipole tilt in degrees
-xp - dipole longitude (right handed) in degrees
-no_error_check - do not do extra checks that inputs are valid.
+	Returns
+	========
+	Magnetic field in SIII coordinates (right handed)
+	br : float
+		Radial field, in nT
+	bt : float
+		Meridional field, in nT
+	bp : float
+		Azimuthal field, in nT
 
-Outputs:
-Magnetic field in SIII coordinates (right handed)
-br - radial field, in nT
-bt - meridional field, in nT
-bp - azimuthal field, in nT
+	This code takes a hybrid approach to calculating the current sheet 
+	field, using the integral equations in some regions and the analytic 
+	equations in others. Following Connerney et al. 1981, figure A1, and 
+	Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
+	equations is most important near rho = r0 and z = 0.
+	
+	By default, this code uses the analytic equations everywhere except 
+	|Z| < D*1.5 and |Rho-R0| < 2.
 
-This code takes a hybrid approach to calculating the current sheet field, using the integral equations in some regions and the analytic equations in others.
-Following Connerney et al. 1981, figure A1, and Edwards et al. (2001), figure 2, the choice of integral vs. analytic equations is most important near rho = r0 and z = 0.
-By default, this code uses the analytic equations everywhere except |Z| < D*1.5 and |Rho-R0| < 2
-Analytic equations:
-   For the analytic equations, we use the equations provided in Connerney et al., 1981 (https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
-   Other analytic approximations to the CAN sheet equations are provided by Edwards et al. 2001: https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
-   Integral equations:
-   For the integral equations we use the Bessel functions from Connerney et al. 1981, eqs. 14, 15, 17, 18
-   We do not integrate lambda from zero to infinity, but vary the integration limit depending on the value of the Bessel functions.
-   Keyword equation_type can be set to 'integral' or 'analytic' if the user wants to force using the integral or analytic equations
-   by Marissa Vogt, March 2021,
-  RJ Wilson did some speedups and re-formatting of lines, also March 2021
-'ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?)'
-      IF (min_t LT 0) OR (max_t GT !DPI    ) THEN MESSAGE,'ERROR: CoLat. T must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?)'
-      IF (min_f LT 0) OR (max_f GT !DPI *2d) THEN MESSAGE,'ERROR: Long. F must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?)'
-    ENDELSE
-'''
+	Analytic Equations
+	==================
+	For the analytic equations, we use the equations provided in 
+	Connerney et al., 1981 
+	(https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
+	   
+	Other analytic approximations to the CAN sheet equations are 
+	provided by Edwards et al. 2001: 
+	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
+	
+	
+	Integral Equations
+	==================
+	For the integral equations we use the Bessel functions from 
+	Connerney et al. 1981, eqs. 14, 15, 17, 18.
+	
+	We do not integrate lambda from zero to infinity, but vary the 
+	integration limit depending on the value of the Bessel functions.
+	
+	Other Notes
+	===========
+	
+	Keyword equation_type can be set to 'integral' or 'analytic' if the 
+	user wants to force using the integral or analytic equations ,by 
+	Marissa Vogt, March 2021.
+	
+	RJ Wilson did some speedups and re-formatting of lines, also March 2021
+	'''
 
 
 	print('Equation type is', equation_type)
