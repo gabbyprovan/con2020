@@ -17,7 +17,7 @@ class _Switcher(object):
 		'''	
 		self.check1=check1
 		self.check2=check2
-	def indirect(self,i,check1,check2):
+	def indirect(self,i):
 		'''
 		This method will return one of the other methods of this class
 		to be used as a function based on the index provided.
