@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.special import jv
-
+from ._Switcher import _Switcher
 
 def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			xp=-24.2,equation_type='hybrid',no_error_check=False,
@@ -257,7 +257,7 @@ endelse
 			check2[inside_d]=1
 
 		zcase=1
-		print(zcase)
+
 		while zcase <= 6:
 			s = _Switcher(check1,check2)
 			result=s.indirect(zcase)
