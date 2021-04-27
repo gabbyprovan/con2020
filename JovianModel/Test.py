@@ -85,7 +85,7 @@ def Test():
 	jrm09_analytic= data.CS_FIELD_ANALYTIC[0][:,inds]
 	jrm09_hybrid=  data.CS_FIELD_HYBRID[0][:,inds]
 	jrm09_integral= data.CS_FIELD_INTEGRAL[0][:,inds]
-	
+
 	#call the model code
 	print('Calling Model')
 	Br,Bt,Bp = Model(r,theta,phi)
@@ -120,3 +120,8 @@ def Test():
 
 	
 	plt.subplots_adjust(hspace=0.0)
+
+
+	#find the bad indices
+	bad = np.where(np.abs(Bp - jrm09_hybrid[2]) > 0.1)[0][0]
+	return r[bad],theta[bad],phi[bad],(Br[bad],Bt[bad],Bp[bad])
