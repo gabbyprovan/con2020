@@ -573,26 +573,27 @@ bp = -bx*          sin_phi+by*          cos_phi#
 	returns=np.array([br,bt,bp])
 	return(returns)
 	
-test=readsav('/data/sol-ionosphere/juno/gp31/FIDUCIAL/peri-16_pc_r60s_examples_me_update1.sav')
-# plot, time_ddate, BP_CAN2020_JRM09
-time_year=test.time_year
-time_ddate=test.time_ddate
-r=test.r
-sys3_colat_rads=test.SYS3_COLAT_RADS 
-sys3_elong_rads=test.SYS3_ELONG_RADS 
-jrm09_field_analytic= test.JRM09_FIELD_ANALYTIC
-jrm09_field_hybrid=  test.JRM09_FIELD_HYBRID
-jrm09_field_integral= test.JRM09_FIELD_INTEGRAL
+if __name__ == '__main__':
+	test=readsav('/data/sol-ionosphere/juno/gp31/FIDUCIAL/peri-16_pc_r60s_examples_me_update1.sav')
+	# plot, time_ddate, BP_CAN2020_JRM09
+	time_year=test.time_year
+	time_ddate=test.time_ddate
+	r=test.r
+	sys3_colat_rads=test.SYS3_COLAT_RADS 
+	sys3_elong_rads=test.SYS3_ELONG_RADS 
+	jrm09_field_analytic= test.JRM09_FIELD_ANALYTIC
+	jrm09_field_hybrid=  test.JRM09_FIELD_HYBRID
+	jrm09_field_integral= test.JRM09_FIELD_INTEGRAL
 
 
-#sorces=s[s]
-r= np.array([r], dtype=np.float32)
-sys3_colat_rads= np.array([sys3_colat_rads], dtype=np.float32)
-sys3_elong_rads= np.array([sys3_elong_rads], dtype=np.float32)
-rr=(r[0,0:]) 
-scolat=(sys3_colat_rads[0,0:])
-slong=(sys3_elong_rads[0,0:])
+	#sorces=s[s]
+	r= np.array([r], dtype=np.float32)
+	sys3_colat_rads= np.array([sys3_colat_rads], dtype=np.float32)
+	sys3_elong_rads= np.array([sys3_elong_rads], dtype=np.float32)
+	rr=(r[0,0:]) 
+	scolat=(sys3_colat_rads[0,0:])
+	slong=(sys3_elong_rads[0,0:])
 
-bfield =can_sheet_variable_2020_hybrid_rjw3(rr,scolat,slong, equation_type='hybrid')
-print(bfield[0,0:10],bfield[1,0:10],bfield[2,0:10])
+	bfield =can_sheet_variable_2020_hybrid_rjw3(rr,scolat,slong, equation_type='hybrid')
+	print(bfield[0,0:10],bfield[1,0:10],bfield[2,0:10])
 
