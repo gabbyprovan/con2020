@@ -90,7 +90,7 @@ def Test():
 	print('Calling Model')
 	Br,Bt,Bp = Model(r,theta,phi)
 	
-	print('Calling Old Code')
+#	print('Calling Old Code')
 #	Gr,Gt,Gp = can_sheet_variable_2020_hybrid_rjw3(r,theta,phi,equation_type='hybrid')
 #	Gri,Gti,Gpi = can_sheet_variable_2020_hybrid_rjw3(r,theta,phi,equation_type='integral')
 #	Gra,Gta,Gpa = can_sheet_variable_2020_hybrid_rjw3(r,theta,phi,equation_type='analytic')
@@ -116,5 +116,7 @@ def Test():
 	# ax0.plot(utc,Gra,color='lime',linestyle='--')
 	# ax1.plot(utc,Gta,color='lime',linestyle='--')
 	# ax2.plot(utc,Gpa,color='lime',linestyle='--')
+	
+
 	
 	plt.subplots_adjust(hspace=0.0)
