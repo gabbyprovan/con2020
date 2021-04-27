@@ -42,8 +42,8 @@ class _Switcher(object):
 			check3=np.where((self.check2 ==1) & (self.check1 > 0.7))[0]
 		else:
 			check3=np.where((self.check2 ==1) & (self.check1 > 0.7))[1]
-		lambda_max_brho =   4.0
-		lambda_max_bz   = 100.0
+		lambda_max_brho =   4
+		lambda_max_bz   = 100
 		returns=(check3,lambda_max_brho,lambda_max_bz)
 		return(returns)
 	def number_2(self):
@@ -51,8 +51,8 @@ class _Switcher(object):
 			check3=np.where((self.check2 ==0) & (self.check1 > 0.7))[0]
 		else:		
 			check3=np.where((self.check2 ==0) & (self.check1 > 0.7))[1]
-		lambda_max_brho =   4.0
-		lambda_max_bz   = 20.0
+		lambda_max_brho =   4
+		lambda_max_bz   = 20
 		returns=(check3,lambda_max_brho,lambda_max_bz)
 		return(returns)
 	def number_3(self):
@@ -60,8 +60,8 @@ class _Switcher(object):
 			check3=np.where((self.check2 == 1) & (self.check1 < 1) & (self.check1 < 0.7))[0]
 		else:
 			check3=np.where((self.check2 == 1) & (self.check1 < 1) & (self.check1 < 0.7))[1]
-		lambda_max_brho =  40.0
-		lambda_max_bz   = 100.0
+		lambda_max_brho =  40
+		lambda_max_bz   = 100
 		returns=[check3,lambda_max_brho,lambda_max_bz]
 		return(returns)
 	def number_4(self):
@@ -69,8 +69,8 @@ class _Switcher(object):
 			check3=np.where((self.check2 ==0) & (self.check1 < 1) & (self.check1 < 0.7))[0]
 		else:
 			check3=np.where((self.check2 ==0) & (self.check1 < 1) & (self.check1 < 0.7))[1]
-		lambda_max_brho =  40.0
-		lambda_max_bz   = 20.0
+		lambda_max_brho =  40
+		lambda_max_bz   = 20
 		returns=[check3,lambda_max_brho,lambda_max_bz]
 		return(returns)
 	def number_5(self):
@@ -78,8 +78,8 @@ class _Switcher(object):
 			check3=np.where((self.check2 ==1) & ( self.check1 < 0.1))[0]
 		else:
 			check3=np.where((self.check2 ==1) & ( self.check1 < 0.1))[1]
-		lambda_max_brho =  100.0
-		lambda_max_bz   = 100.0
+		lambda_max_brho =  100
+		lambda_max_bz   = 100
 		returns=[check3,lambda_max_brho,lambda_max_bz]
 		return(returns)
 	def number_6(self):
@@ -87,7 +87,7 @@ class _Switcher(object):
 			check3=np.where((self.check2 ==0) & (self.check1 < 0.1))[0]
 		else:
 			check3=np.where((self.check2 ==0) & (self.check1 < 0.1))[1]		
-		lambda_max_brho =  100.0
-		lambda_max_bz   = 20.0
+		lambda_max_brho =  100
+		lambda_max_bz   = 20
 		returns=[check3,lambda_max_brho,lambda_max_bz]
 		return(returns)
