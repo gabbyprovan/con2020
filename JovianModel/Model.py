@@ -155,7 +155,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 
 	
 
-	abs_z1 = abs(z1)#
+	abs_z1 = np.abs(z1)#
 	N=z1.size
 	scalar_input=0
 	if N == 1:
@@ -166,7 +166,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	if equation_type == 'integral':
 		do_integral[0:N]=1
 	if equation_type == 'hybrid':
-		sel_hybrid=np.where((abs_z1 <= d*1.5) & (abs(rho1-r0) <= 2))
+		sel_hybrid=np.where((abs_z1 <= d*1.5) & (np.abs(rho1-r0) <= 2))
 		do_integral[sel_hybrid]=1
 
 	if scalar_input == 1:
@@ -181,16 +181,12 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			n_ind_integral = 1
 			ind_integral = 0
 	if scalar_input != 1:
-			ind_analytic=np.where(do_integral == 0)
-			ind_integrals=np.where(do_integral == 1)
-			ind_integral=np.where(do_integral == 1)
-			
-			ind_integral=np.array(ind_integral)
-			ind_analytic=np.array(ind_analytic)
-	
+		ind_analytic = np.where(do_integral == 0)[0]
+		ind_integral = np.where(do_integral == 1)[0]
 
-			n_ind_analytic=ind_analytic.size
-			n_ind_integral=ind_integral.size
+
+		n_ind_analytic = ind_analytic.size
+		n_ind_integral = ind_integral.size
 	brho1= np.zeros(N)
 	bz1= np.zeros(N)			
 
@@ -251,31 +247,29 @@ endelse
 		check1=np.abs(abs_z1[ind_integral]-d)
 		ncheck1=(check1.size)
 		check2=np.zeros(ncheck1)
-		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[1]
+		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[0]
 		flag = not np.any(inside_d)
 		if flag == False:
 			check2[inside_d]=1
 
 		zcase=1
 
-		while zcase <= 6:
+		for zcase in range(1,7):
 			s = _Switcher(check1,check2)
-			result=s.indirect(zcase)
-			ind_case=np.array(result[0])
+			ind_case,lambda_max_brho,lambda_max_bz = s.indirect(zcase)
 			n_ind_case=len(ind_case)
-			lambda_max_brho=result[1]
-			lambda_max_bz=result[2]
+
 			if n_ind_case >= 0:
 				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho - 1),dlambda_brho ) 
 				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz - 1),dlambda_bz) 
 				beselj_rho_r0_0   = jv(0,lambda_int_brho*r0)# % Only 6 sets of values
 				beselj_z_r0_0     = jv(0,lambda_int_bz*r0)# % Only 6 sets of values
-				zi=0
-				while zi <= n_ind_case-1:
+
+				for zi in range(0,n_ind_case):
 					if scalar_input != 1:
-						ind_for_integral =ind_integral[0,ind_case[zi]] #;% sub-indices of sub-indices!
-					if scalar_input == 1:
-						ind_for_integral =ind_integral #;% sub-indices of sub-indices!
+						ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
+					else:
+						ind_for_integral = ind_integral 
 					beselj_rho_rho1_1 = jv(1, lambda_int_brho*rho1[ind_for_integral])
 					beselj_z_rho1_0   = jv(0,lambda_int_bz *rho1[ind_for_integral] )
 					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15
@@ -283,16 +277,15 @@ endelse
 						bz_int_funct   = beselj_z_rho1_0 *beselj_z_r0_0  *np.sinh(d*lambda_int_bz  ) *np.exp(-abs_z1[ind_for_integral]*lambda_int_bz  )/lambda_int_bz  #
 						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
 						if z1[ind_for_integral] < 0:
-							brho1[ind_for_integral] = (-1.0)*brho1[ind_for_integral]
+							brho1[ind_for_integral] = -brho1[ind_for_integral]
 					else:
 						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0*(np.sinh(z1[ind_for_integral]*lambda_int_brho)*np.exp(-d*lambda_int_brho))/lambda_int_brho#
 						bz_int_funct   = beselj_z_rho1_0  *beselj_z_r0_0  *(1.0 -np.cosh(z1[ind_for_integral]*lambda_int_bz  )*np.exp(-d*lambda_int_bz  ))/lambda_int_bz  #
 						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
 					bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
 					
-					zi += 1
 	
-			zcase +=1
+			
 
 	'''
 ===========
@@ -327,62 +320,62 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 		z1pd = z1+d;
 		z1md = z1-d
 
-	if scalar_input == 1:
-		if rho1 < r0:
-			ind_LT   = 0
-			n_ind_LT = 1
-			n_ind_GE = 0
-		else:
-			n_ind_LT = 0
-			ind_GE   = 0
-			n_ind_GE = 1
+		if scalar_input == 1:
+			if rho1 < r0:
+				ind_LT   = 0
+				n_ind_LT = 1
+				n_ind_GE = 0
+			else:
+				n_ind_LT = 0
+				ind_GE   = 0
+				n_ind_GE = 1
 
-	if scalar_input != 1:
-		ind_LT=np.where((rho1 < r0) & (do_integral == 0))
-		ind_GE = np.where((rho1 > r0) & (do_integral == 0))
-		ind_LT=np.array(ind_LT)
-		ind_GE=np.array(ind_GE)
-		n_ind_LT=ind_LT.size
-		n_ind_GE=ind_GE.size
+		if scalar_input != 1:
+			ind_LT=np.where((rho1 < r0) & (do_integral == 0))
+			ind_GE = np.where((rho1 > r0) & (do_integral == 0))
+			ind_LT=np.array(ind_LT)
+			ind_GE=np.array(ind_GE)
+			n_ind_LT=ind_LT.size
+			n_ind_GE=ind_GE.size
 
-		if (n_ind_LT != 0): 
-      			f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r0**2)
-      			f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r0**2)
-      			f1_cubed = f1**3
-      			f2_cubed = f2**3
-      			brho1[ind_LT] = mui_2*(rho1[ind_LT]/2)*((1/f1)-(1/f2))
-      			bz1[ind_LT] = mui_2*(2*d*(1/np.sqrt(z1[ind_LT]*z1[ind_LT] +r0**2)) - ((rho1_sq[ind_LT])/4)*((z1md[ind_LT]/f1**3) - (z1pd[ind_LT]/f2**3)))
+			if (n_ind_LT != 0): 
+					f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r0**2)
+					f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r0**2)
+					f1_cubed = f1**3
+					f2_cubed = f2**3
+					brho1[ind_LT] = mui_2*(rho1[ind_LT]/2)*((1/f1)-(1/f2))
+					bz1[ind_LT] = mui_2*(2*d*(1/np.sqrt(z1[ind_LT]*z1[ind_LT] +r0**2)) - ((rho1_sq[ind_LT])/4)*((z1md[ind_LT]/f1**3) - (z1pd[ind_LT]/f2**3)))
 
-		if (n_ind_GE != 0):
-      			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
-      			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
-      			bz1[ind_GE] = mui_2 *(2*d/np.sqrt(z1[ind_GE]*z1[ind_GE] +rho1_sq[ind_GE])-(r0**2/4)*((z1md[ind_GE]/f1**3)-(z1pd[ind_GE]/f2**3)))
+			if (n_ind_GE != 0):
+					f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
+					f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
+					bz1[ind_GE] = mui_2 *(2*d/np.sqrt(z1[ind_GE]*z1[ind_GE] +rho1_sq[ind_GE])-(r0**2/4)*((z1md[ind_GE]/f1**3)-(z1pd[ind_GE]/f2**3)))
 
-	if scalar_input == 1:
-		if abs_z1 > d_value:
-			brho1 = mui_2*((1/rho1)*(f1-f2+2*d*z1/abs_z1) - (r0**2 *rho1/4)*((1/f1**3)-(1/f2**3)))		 
-		else:
-			brho1 = mui_2*((1/rho1)*(f1-f2+2*z1) - (r0**2*rho1/4)*((1/f1**3)-(1/f2**3)))
-	
-	if scalar_input !=1:
-		ind2_LT = np.where(abs_z1[ind_GE] > d)
-		ind2_GE = np.where(abs_z1[ind_GE] < d)
-		ind2_LT = np.array(ind2_LT)[1]
-		ind2_GE = np.array(ind2_GE)[1]
-		n_ind2_LT = ind2_LT.size
-		n_ind2_GE = ind2_GE.size
-	
-	
-	if (n_ind2_LT != 0):
-		ind3 = ind_GE[0,ind2_LT]
-		brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[0,ind2_LT]-f2[0,ind2_LT]+2*d*z1[ind3]/abs_z1[ind3])  - (r0**2 *rho1[ind3]/4) *((1/f1[0,ind2_LT]**3)-(1/f2[0,ind2_LT]**3)))
-       
-	if (n_ind2_GE != 0):
-		ind3 = ind_GE[0,ind2_GE];
-		brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[0,ind2_GE]-f2[0,ind2_GE]+2*z1[ind3])- (r0**2*rho1[ind3]/4)*((1/f1[0,ind2_GE]**3)-(1/f2[0,ind2_GE]**3)));
+		if scalar_input == 1:
+			if abs_z1 > d_value:
+				brho1 = mui_2*((1/rho1)*(f1-f2+2*d*z1/abs_z1) - (r0**2 *rho1/4)*((1/f1**3)-(1/f2**3)))		 
+			else:
+				brho1 = mui_2*((1/rho1)*(f1-f2+2*z1) - (r0**2*rho1/4)*((1/f1**3)-(1/f2**3)))
+		
+		if scalar_input !=1:
+			ind2_LT = np.where(abs_z1[ind_GE] > d)
+			ind2_GE = np.where(abs_z1[ind_GE] < d)
+			ind2_LT = np.array(ind2_LT)[1]
+			ind2_GE = np.array(ind2_GE)[1]
+			n_ind2_LT = ind2_LT.size
+			n_ind2_GE = ind2_GE.size
+		
+		
+		if (n_ind2_LT != 0):
+			ind3 = ind_GE[0,ind2_LT]
+			brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[0,ind2_LT]-f2[0,ind2_LT]+2*d*z1[ind3]/abs_z1[ind3])  - (r0**2 *rho1[ind3]/4) *((1/f1[0,ind2_LT]**3)-(1/f2[0,ind2_LT]**3)))
+		   
+		if (n_ind2_GE != 0):
+			ind3 = ind_GE[0,ind2_GE];
+			brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[0,ind2_GE]-f2[0,ind2_GE]+2*z1[ind3])- (r0**2*rho1[ind3]/4)*((1/f1[0,ind2_GE]**3)-(1/f2[0,ind2_GE]**3)));
 
 
-	
+		
 
 	'''
  =======
@@ -400,21 +393,19 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 		if abs_z1 <  d_value:
 			bphi1 =  bphi1*abs_z1/d_value
 		if z1 > 0:
-			bphi1 = (-1.0)*bphi1
+			bphi1 = -bphi1
 
 
-	if scalar_input != 1:
-		ind = np.where(abs_z1 < d)
-		ind=np.array(ind)
-		sized=ind.size
+	else:
+		ind = np.where(abs_z1 < d)[0]
+		sized = ind.size
 		if sized != 0:
 			bphi1[ind] =  bphi1[ind] * abs_z1[ind] / d
 
-		ind = np.where(z1 > d)
-		ind=np.array(ind)
-		sized=ind.size
+		ind = np.where(z1 > d)[0]
+		sized = ind.size
 		if sized != 0:
-			bphi1[ind] =  (-1.0)*bphi1[ind] 
+			bphi1[ind] =  -bphi1[ind] 
 				
 	
 	'''
@@ -443,9 +434,9 @@ a1_sq = a1*a1# % outer edge squared
 	f2 = np.sqrt(z1pd**2 +r1**2)
 
 	brho_finite = mui_2*(rho1/2)*((1/f1)-(1/f2))
-	bz_finite   = mui_2*(2*d*(1/np.sqrt(z1**2+r1**2)) - ((rho1*rho1)/4)*((z1md/(f1**3)) - (z1pd/(f2**3))))
+	bz_finite   = mui_2*(2*d*(1/np.sqrt(z1**2+r1**2)) - ((rho1**2)/4)*((z1md/(f1**3)) - (z1pd/(f2**3))))
 	brho1       = brho1 - brho_finite
-	bphi_finite = (-1.0)*i_rho * brho_finite/mui_2#
+	bphi_finite = -i_rho * brho_finite/mui_2#
 	bz1         = bz1 - bz_finite#
 
 
