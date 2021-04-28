@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import os
 import DateTimeTools as TT
 from .Model import Model
-#from .can_sheet_variable_2020_hybrid_rjw3 import can_sheet_variable_2020_hybrid_rjw3
 
 def _ConvertTime(year,dayno):
 	'''
@@ -62,7 +61,7 @@ def Test():
 	ModulePath = os.path.dirname(__file__)+'/'
 
 	#name and path of the test data file
-	fname = ModulePath + '__data/peri-16_pc_r60s_examples_all_update1.sav'
+	fname = ModulePath + '__data/testdata.sav'
 
 	#read the data
 	print('Reading Data')
