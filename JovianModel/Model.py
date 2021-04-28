@@ -139,10 +139,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	x = r*sin_theta*np.cos(phi-dipole_shift)
 	y = r*sin_theta*np.sin(phi-dipole_shift)
 	z = r*cos_theta#]
-	print('x',x)
-	print('y',y)
-	print('z',z)
-	print('Dipole shift: ',dipole_shift)
+
 #% Rotate by the amount of the dipole tilt
 #% (x1,y1,z1) are the tilted (theta) and shifted (phi) coordinates
 #  theta_cs = double(xt_value)*!dpi/180. #dipole tilt is xt_value
@@ -160,11 +157,6 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	rho1 = (rho1_sq)**0.5 # %cylindrical radial distance
 	mui_2 = mu_i
 
-	print('theta_cs: ',theta_cs)
-	print('rho1: ',rho1)
-	print('x1',x1)
-	print('y1',y1)
-	print('z1',z1)
 
 #% ===========
 #% Decide whether to use integral equations or analytic equations
@@ -187,9 +179,6 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 		sel_hybrid = np.where((abs_z1 <= d*1.5) & (np.abs(rho1-r0) <= 2))[0]
 		do_integral[sel_hybrid]=1
 
-	print('abs_z1: ',abs_z1)
-	print('N :',N)
-	print('do_integral: ',do_integral)
 
 	ind_analytic = np.where(do_integral == 0)[0]
 	ind_integral = np.where(do_integral == 1)[0]
@@ -200,11 +189,6 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	brho1= np.zeros(N)
 	bz1= np.zeros(N)			
 
-	print('brho1: ',brho1)
-	print('bz1: ',bz1)
-	print('n_analytic: ',n_ind_analytic,'    n_integral: ',n_ind_integral)
-	print('ind_integral: ',ind_integral)
-	print('ind_analytic: ',ind_analytic)
 
 	'''	
 
@@ -336,21 +320,13 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 		z1pd = z1+d;
 		z1md = z1-d
 
-		print('z1md',z1md)
-		print('z1pd',z1pd)
-		print('r0_value_sq',r0**2)
-
-
 		ind_LT = np.where((rho1 < r0) & (do_integral == 0))[0]
 		ind_GE = np.where((rho1 > r0) & (do_integral == 0))[0]
 
 		n_ind_LT = ind_LT.size
 		n_ind_GE = ind_GE.size
 
-		print('n_ind_LT',n_ind_LT)
-		print('ind_LT',ind_LT)
-		print('n_ind_GE',n_ind_GE)
-		print('ind_GE',ind_GE)
+
 
 		if (n_ind_LT != 0): 
 			f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r0**2)
@@ -359,11 +335,7 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 			f2_cubed = f2**3
 			brho1[ind_LT] = mui_2*(rho1[ind_LT]/2)*((1/f1)-(1/f2))
 			bz1[ind_LT] = mui_2*(2*d*(1/np.sqrt(z1[ind_LT]*z1[ind_LT] +r0**2)) - ((rho1_sq[ind_LT])/4)*((z1md[ind_LT]/f1**3) - (z1pd[ind_LT]/f2**3)))
-			print('LT')
-			print('f1,f1**3: ',f1,f1_cubed)
-			print('f2,f2**3: ',f2,f2_cubed)
-			print('brho1',brho1[ind_LT])
-			print('bz1',bz1[ind_LT])
+
 		if (n_ind_GE != 0):
 			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
 			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
@@ -386,13 +358,6 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 				ind3 = ind_GE[ind2_GE];
 				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3])- (r0**2*rho1[ind3]/4)*((1/f1[ind2_GE]**3)-(1/f2[ind2_GE]**3)));
 
-			print('GE')
-			print('f1,f1**3: ',f1,f1_cubed)
-			print('f2,f2**3: ',f2,f2_cubed)
-			print('brho1',brho1[ind_GE])
-			print('bz1',bz1[ind_GE])
-		
-
 	'''
  =======
  New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
@@ -404,19 +369,16 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 	'''
  
 	bphi1 = 2.7975*i_rho/rho1
-	print('bphi1',bphi1)		
 
 	ind = np.where(abs_z1 < d)[0]
 	sized = ind.size
 	if sized != 0:
 		bphi1[ind] =  bphi1[ind] * abs_z1[ind] / d
-	print('bphi1',bphi1)		
 
 	ind = np.where(z1 > 0.0)[0]
 	sized = ind.size
 	if sized != 0:
 		bphi1[ind] =  -bphi1[ind] 
-	print('bphi1',bphi1)		
 	
 	'''
 =====================
