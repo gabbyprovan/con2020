@@ -52,11 +52,11 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	========
 	Magnetic field in SIII coordinates (right handed)
 	br : float
-		Radial field, in nT (or Bx if Cartesian == true)
+		Radial field, in nT (or Bx if Cartesian == True)
 	bt : float
-		Meridional field, in nT (or By if Cartesian == true)
+		Meridional field, in nT (or By if Cartesian == True)
 	bp : float
-		Azimuthal field, in nT (or Bz if Cartesian == true)
+		Azimuthal field, in nT (or Bz if Cartesian == True)
 
 	This code takes a hybrid approach to calculating the current sheet 
 	field, using the integral equations in some regions and the analytic 
