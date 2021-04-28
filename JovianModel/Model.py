@@ -266,10 +266,8 @@ endelse
 				beselj_z_r0_0     = jv(0,lambda_int_bz*r0)# % Only 6 sets of values
 
 				for zi in range(0,n_ind_case):
-					if scalar_input != 1:
-						ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
-					else:
-						ind_for_integral = ind_integral 
+					ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
+ 
 					beselj_rho_rho1_1 = jv(1, lambda_int_brho*rho1[ind_for_integral])
 					beselj_z_rho1_0   = jv(0,lambda_int_bz *rho1[ind_for_integral] )
 					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15

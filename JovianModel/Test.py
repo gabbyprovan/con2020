@@ -67,23 +67,22 @@ def Test():
 	print('Reading Data')
 	data = readsav(fname).test
 
-	inds = np.arange(5000) + 30000
 	#get the time
-	year = data.time_year[0][inds]
-	dayno = data.time_ddate[0][inds]
+	year = data.time_year[0]
+	dayno = data.time_ddate[0]
 	
 	#convert to another time format
 	Date,ut,utc = _ConvertTime(year,dayno)
 	
 	#and the model inputs (positions)
-	r = data.r[0][inds]
-	theta = data.SYS3_COLAT_RADS[0][inds]
-	phi = data.SYS3_ELONG_RADS[0][inds]
+	r = data.r[0]
+	theta = data.SYS3_COLAT_RADS[0]
+	phi = data.SYS3_ELONG_RADS[0]
 	
 	#model fields to test against
-	jrm09_analytic= data.CS_FIELD_ANALYTIC[0][:,inds]
-	jrm09_hybrid=  data.CS_FIELD_HYBRID[0][:,inds]
-	jrm09_integral= data.CS_FIELD_INTEGRAL[0][:,inds]
+	jrm09_analytic= data.CS_FIELD_ANALYTIC[0]
+	jrm09_hybrid=  data.CS_FIELD_HYBRID[0]
+	jrm09_integral= data.CS_FIELD_INTEGRAL[0]
 
 	#call the model code
 	print('Calling Model')
