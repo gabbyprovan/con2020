@@ -1,4 +1,4 @@
-# Jovianfiducialmagneticmodel
+# con2020
 
 Description of the model here
 
@@ -7,19 +7,19 @@ Description of the model here
 Install the module using `pip3`:
 
 ```bash
-pip3 install --user Jovianfiducialmagneticmodel
+pip3 install --user con2020
 ```
 
 Or using this repo:
 
 ```bash
 #clone the repo
-git clone https://github.com/gabbyprovan/Jovianfiducialmagneticmodel
-cd Jovianfiducialmagneticmodel
+git clone https://github.com/gabbyprovan/con2020
+cd con2020
 
 #EITHER create a wheel and install (X.X.X is the current version number)
 python3 setup.py bdist_wheel
-pip3 install --user dist/Jovianfiducialmagneticmodel-X.X.X-py3-none-any.whl
+pip3 install --user dist/con2020-X.X.X-py3-none-any.whl
 
 #or directly install using setup.py
 python3 setup.py insall --user
@@ -30,20 +30,20 @@ python3 setup.py insall --user
 The module contains two functions which can be used to access the model  (`Model` and `ModelCart`) and a test function (`Test`). Both model functions will accept scalars, `numpy` arrays, `lists` and `tuples` of coordinates - they each get converted to a `numpy.ndarray`.
 
 ```python
-import JovianModel as jm
+import con2020
 
 #call the model using spherical polar coordinates (System III)
-Br,Bp,Bt = jm.Model(r,theta,phi)
+Br,Bp,Bt = con2020.Model(r,theta,phi)
 
 #or using cartesian coordinates (System III)
-Bx,By,Bz = jm.ModelCart(x,y,z)
+Bx,By,Bz = con2020.ModelCart(x,y,z)
 
 #for a full list of keywords
-jm.Model?
-jm.ModelCart?
+con2020.Model?
+con2020.ModelCart?
 
 #test the model
-jm.Test()
+con2020.Test()
 ```
 
 The `Test()` function should produce the following:

@@ -12,7 +12,7 @@ def getversion():
 	'''
 	#get the init file path
 	thispath = os.path.abspath(os.path.dirname(__file__))+'/'
-	initfile = thispath + 'JovianModel/__init__.py'
+	initfile = thispath + 'con2020/__init__.py'
 	
 	#read the file in
 	f = open(initfile,'r')
@@ -31,14 +31,14 @@ def getversion():
 version = getversion()
 
 setuptools.setup(
-    name="Jovianfiducialmagneticmodel",
+    name="con2020",
 	version=version,
     author="Gabby Provan",
     author_email="?",
-    description="Python module for the CAN 2020 model.",
+    description="Python module for the Connerney 2020 model.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/gabbyprovan/Jovianfiducialmagneticmodel",
+    url="https://github.com/gabbyprovan/con2020",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
