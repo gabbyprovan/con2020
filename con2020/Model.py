@@ -259,7 +259,7 @@ endelse
 			ind_case,lambda_max_brho,lambda_max_bz = s.indirect(zcase)
 			n_ind_case=len(ind_case)
 
-			if n_ind_case >= 0:
+			if n_ind_case > 0:
 				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho - 1),dlambda_brho ) 
 				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz - 1),dlambda_bz) 
 				beselj_rho_r0_0   = jv(0,lambda_int_brho*r0)# % Only 6 sets of values
@@ -319,7 +319,7 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 		z1md = z1-d
 
 		ind_LT = np.where((rho1 < r0) & (do_integral == 0))[0]
-		ind_GE = np.where((rho1 > r0) & (do_integral == 0))[0]
+		ind_GE = np.where((rho1 >= r0) & (do_integral == 0))[0]
 
 		n_ind_LT = ind_LT.size
 		n_ind_GE = ind_GE.size
