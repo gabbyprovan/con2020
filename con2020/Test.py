@@ -80,9 +80,9 @@ def Test():
 	phi = data.SYS3_ELONG_RADS[0]
 	
 	#model fields to test against
-	jrm09_analytic= data.CS_FIELD_ANALYTIC[0]
-	jrm09_hybrid=  data.CS_FIELD_HYBRID[0]
-	jrm09_integral= data.CS_FIELD_INTEGRAL[0]
+	con20_analytic= data.CS_FIELD_ANALYTIC[0]
+	con20_hybrid=  data.CS_FIELD_HYBRID[0]
+	con20_integral= data.CS_FIELD_INTEGRAL[0]
 
 	#call the model code
 	print('Calling Model')
@@ -91,12 +91,12 @@ def Test():
 	#create a plot
 	plt.figure(figsize=(11,8))
 	
-	ax0 = _PlotComponent(utc,Br,jrm09_analytic[0],jrm09_hybrid[0],
-			jrm09_integral[0],maps=[1,3,0,0],Comp=r'$B_{r}$',nox=True)
-	ax1 = _PlotComponent(utc,Bt,jrm09_analytic[1],jrm09_hybrid[1],
-			jrm09_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$',nox=True)
-	ax2 = _PlotComponent(utc,Bp,jrm09_analytic[2],jrm09_hybrid[2],
-			jrm09_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$',nox=False)
+	ax0 = _PlotComponent(utc,Br,con20_analytic[0],con20_hybrid[0],
+			con20_integral[0],maps=[1,3,0,0],Comp=r'$B_{r}$',nox=True)
+	ax1 = _PlotComponent(utc,Bt,con20_analytic[1],con20_hybrid[1],
+			con20_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$',nox=True)
+	ax2 = _PlotComponent(utc,Bp,con20_analytic[2],con20_hybrid[2],
+			con20_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$',nox=False)
 
 	
 	plt.subplots_adjust(hspace=0.0)
