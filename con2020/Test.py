@@ -36,9 +36,9 @@ def _PlotComponent(t,x,xa,xh,xi,maps=[1,1,0,0],Comp='',nox=False):
 	ax = plt.subplot2grid((maps[1],maps[0]),(maps[3],maps[2]))
 	
 	ax.plot(t,x,color='black',label=Comp+' (This Model)',zorder=1.0)
-	ax.plot(t,xa,linestyle=':',color='red',label=Comp+' (JRM09 Analytical)',zorder=1.0)
-	ax.plot(t,xi,linestyle=':',color='darkorange',label=Comp+' (JRM09 Integral)',zorder=1.0)
-	ax.plot(t,xh,linestyle=':',color='darkgoldenrod',label=Comp+' (JRM09 Hybrid)',zorder=1.0)
+	ax.plot(t,xa,linestyle=':',color='red',label=Comp+' (Con2020 Analytical)',zorder=1.0)
+	ax.plot(t,xi,linestyle=':',color='darkorange',label=Comp+' (Con2020 Integral)',zorder=1.0)
+	ax.plot(t,xh,linestyle=':',color='darkgoldenrod',label=Comp+' (Con2020 Hybrid)',zorder=1.0)
 	
 	ax.legend()
 	ax.set_ylabel(Comp)
