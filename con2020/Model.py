@@ -95,7 +95,6 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	
 	RJ Wilson did some speedups and re-formatting of lines, also March 2021
 	'''
-
 	if not no_error_check:
 		if not equation_type.lower() in ['analytic','hybrid','integral']:
 			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
@@ -108,6 +107,9 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 
 		if np.min(phi)  < 0 or np.max(phi) > 2*np.pi:
 			raise SystemExit ('ERROR: Long must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
+			
+		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
+			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
 	#convert inputs to numpy arrays if scalars are provided
 	if not hasattr(r,'__iter__'):
