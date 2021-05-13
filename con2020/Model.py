@@ -118,9 +118,9 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	#convert lists/tuples to numpy arrays
 	conv = not (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))
 	if conv:
-		r = np.array(r)
-		theta = np.array(theta)
-		phi = np.array(phi)
+		r = np.array(r).astype('float64')
+		theta = np.array(theta).astype('float64')
+		phi = np.array(phi).astype('float64')
 		
 #% Convert to cartesian coordinates and rotate into magnetic longitude
 #% (x,y,z) are the shifted (phi) coordinates
