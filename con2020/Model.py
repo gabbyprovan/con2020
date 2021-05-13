@@ -95,8 +95,9 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	
 	RJ Wilson did some speedups and re-formatting of lines, also March 2021
 	'''
+	equation_type = equation_type.lower()
 	if not no_error_check:
-		if not equation_type.lower() in ['analytic','hybrid','integral']:
+		if not equation_type in ['analytic','hybrid','integral']:
 			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
 
 		if np.min(r) < 0 or np.max(r) > 200:
