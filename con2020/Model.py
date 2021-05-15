@@ -159,7 +159,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
 	z1 = z*np.cos(theta_cs) - x*np.sin(theta_cs)#
 	rho1_sq = x1*x1 + y1*y1
-	rho1 = (rho1_sq)**0.5 # %cylindrical radial distance
+	rho1 = np.sqrt(rho1_sq) # %cylindrical radial distance
 	mui_2 = mu_i
 
 
@@ -183,6 +183,8 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	elif equation_type == 'hybrid':
 		sel_hybrid = np.where((abs_z1 <= d*1.5) & (np.abs(rho1-r0) <= 2))[0]
 		do_integral[sel_hybrid] = True
+	else:
+		raise SystemExit ('Error: Unrecognized equation type: should be analytic, integral or hybrid')
 
 
 	ind_analytic = np.where(do_integral == 0)[0]
@@ -253,9 +255,7 @@ endelse
 		ncheck1=(check1.size)
 		check2=np.zeros(ncheck1)
 		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[0]
-		flag = not np.any(inside_d)
-		if flag == False:
-			check2[inside_d]=1
+		check2[inside_d]=1
 
 		for zcase in range(1,7):
 			s = _Switcher(check1,check2)
