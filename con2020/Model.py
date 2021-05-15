@@ -345,7 +345,7 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 			bz1[ind_GE] = mui_2 *(2*d/np.sqrt(z1[ind_GE]*z1[ind_GE] +rho1_sq[ind_GE])-(r0_eq/4)*((z1md[ind_GE]/f1_cubed)-(z1pd[ind_GE]/f2_cubed)))
 
 			ind2_LT = np.where(abs_z1[ind_GE] > d)[0]
-			ind2_GE = np.where(abs_z1[ind_GE] < d)[0]
+			ind2_GE = np.where(abs_z1[ind_GE] <= d)[0]
 
 			n_ind2_LT = ind2_LT.size
 			n_ind2_GE = ind2_GE.size

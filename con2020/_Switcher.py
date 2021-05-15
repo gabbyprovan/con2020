@@ -52,13 +52,13 @@ class _Switcher(object):
 		returns=(check3,lambda_max_brho,lambda_max_bz)
 		return(returns)
 	def number_3(self):
-		check3=np.where((self.check2 == 1) & (self.check1 < 0.1) & (self.check1 < 0.7))[0]
+		check3=np.where((self.check2 == 1) & (self.check1 < 1) & (self.check1 < 0.7))[0]
 		lambda_max_brho =  40
 		lambda_max_bz   = 100
 		returns=[check3,lambda_max_brho,lambda_max_bz]
 		return(returns)
 	def number_4(self):
-		check3=np.where((self.check2 ==0) & (self.check1 < 0.1) & (self.check1 < 0.7))[0]
+		check3=np.where((self.check2 ==0) & (self.check1 < 1) & (self.check1 < 0.7))[0]
 		lambda_max_brho =  40
 		lambda_max_bz   = 20
 		returns=[check3,lambda_max_brho,lambda_max_bz]
