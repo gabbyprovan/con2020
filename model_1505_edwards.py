@@ -65,7 +65,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	|Z| < D*1.5 and |Rho-R0| < 2.
 	Analytic Equations
 	==================
-	For the analytic equations, we use the equations provided in 
+	For the analytic equations, we use the equations  
 	provided by Edwards et al. 2001: 
 	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
 	
@@ -279,24 +279,7 @@ endelse
  Analytic equations
 ===========
 Connerney et al. 1981's equations for the field produced by a semi-infinite disk of thickness D, inner edge R0, outer edge R1 -
-see their equations A1 through A9
-the analytic equations for Brho and Bz vary depending on the region with respect to the current disk
-if rho1 lt r0_value then begin
-f1 = sqrt((z1-d_value)^2.d +r0_value^2.d)
-f2 = sqrt((z1+d_value)^2.d +r0_value^2.d)
-brho1 = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz1 = mui_2*(2.d*d_value*(z1^2. +r0_value^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-endif else if abs(z1) gt d_value then begin
- f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*d_value*z1/abs(z1)) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endif else begin
-f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*z1) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endelse
+Here we use the Edwards+ (2001) updated Connerney approximations for small rho (9a and 9b) and large rho (13a and 13b)
 RJW way
 Doing these 3 equations on the whole array to save getting confused by indices,  Will swap to just required indices later
 	'''
