@@ -33,7 +33,7 @@ The module contains two functions which can be used to access the model  (`Model
 import con2020
 
 #call the model using spherical polar coordinates (System III)
-Br,Bp,Bt = con2020.Model(r,theta,phi)
+Br,Bt,Bp = con2020.Model(r,theta,phi)
 
 #or using cartesian coordinates (System III)
 Bx,By,Bz = con2020.ModelCart(x,y,z)
