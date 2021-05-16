@@ -96,18 +96,24 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	RJ Wilson did some speedups and re-formatting of lines, also March 2021
 	'''
 
+
 	#convert inputs to numpy arrays if scalars are provided
 	if not hasattr(r,'__iter__'):
-		r = np.array([r]).astype('float64')
-		theta = np.array([theta]).astype('float64')
-		phi = np.array([phi]).astype('float64')
+		r     = np.array([r    ])
+		theta = np.array([theta])
+		phi   = np.array([phi  ])
 		
 	#convert lists/tuples to numpy arrays
-	conv = not (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))
-	if conv:
-		r = np.array(r).astype('float64')
+	elif (not (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))):
+		r     = np.array(r    ).astype('float64')
 		theta = np.array(theta).astype('float64')
-		phi = np.array(phi).astype('float64')
+		phi   = np.array(phi  ).astype('float64')
+
+	#are values already in numpy arrays?
+	elif (    (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))):
+		pass # all good!
+	else:
+		raise SystemExit ('ERROR: Input coordinate arrays must all be scalars or lists/tuples or numpy arrays.')
 
 	equation_type = equation_type.lower()
 	if not no_error_check:
