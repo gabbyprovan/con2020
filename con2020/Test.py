@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import DateTimeTools as TT
 from .Model import Model
+import time
 
 def _ConvertTime(year,dayno):
 	'''
@@ -103,4 +104,105 @@ def Test():
 
 
 
+def TestTimingIntVsAn(n=10):
+	'''
+	Compare the timing of the integral Vs analytic equation types using
+	an array of positions.
+	
+	Prior to modifications: 
+		ti = 2.4s
+		ta = 0.0003s
+		
+	Moved initialization of _Switcher object outside of loop:
+		no change
 
+	NewSwitcher:
+		no change
+		
+	Switch to j0 and j1:
+		Much faster
+		ti : 0.6s
+	
+	'''
+	
+	# this is the path of this source file
+	ModulePath = os.path.dirname(__file__)+'/'
+
+	#name and path of the test data file
+	fname = ModulePath + '__data/testdata.sav'
+
+	#read the data
+	print('Reading Data')
+	data = readsav(fname).test
+	
+	#and the model inputs (positions)
+	r = data.r[0][:n]
+	theta = data.SYS3_COLAT_RADS[0][:n]
+	phi = data.SYS3_ELONG_RADS[0][:n]
+	print(r.size)
+	
+	print('Testing {:d} model vectors'.format(n))
+	#call the model code
+	print('Calling Integral Model')
+	ti0 = time.time()
+	Br,Bt,Bp = Model(r,theta,phi,equation_type='integral')
+	ti1 = time.time()
+	print('Completed in {:f}s'.format(ti1-ti0))
+	
+	print('Calling Analytic Model')
+	ta0 = time.time()
+	Br,Bt,Bp = Model(r,theta,phi,equation_type='analytic')
+	ta1 = time.time()
+	print('Completed in {:f}s'.format(ta1-ta0))
+	
+def TestTimingIntVsAnSingle(n=10):
+	'''
+	Compare the time taken to call model one position at a time.
+
+	Prior to modifications: 
+		ti = 4.5s
+		ta = 0.002s
+	
+	Moved initialization of _Switcher object outside of loop:
+		no change
+		
+	NewSwitcher:
+		no change
+
+	Switch to j0 and j1:
+		Much faster
+		ti : 0.8s
+	
+	'''
+	
+	# this is the path of this source file
+	ModulePath = os.path.dirname(__file__)+'/'
+
+	#name and path of the test data file
+	fname = ModulePath + '__data/testdata.sav'
+
+	#read the data
+	print('Reading Data')
+	data = readsav(fname).test
+	
+	#and the model inputs (positions)
+	r = data.r[0][:n]
+	theta = data.SYS3_COLAT_RADS[0][:n]
+	phi = data.SYS3_ELONG_RADS[0][:n]
+	
+	print('Testing {:d} model vectors'.format(n))
+	#call the model code
+	print('Calling Integral Model')
+	ti0 = time.time()
+	for i in range(0,n):
+		Br,Bt,Bp = Model(r[i],theta[i],phi[i],equation_type='integral')
+	ti1 = time.time()
+	print('Completed in {:f}s'.format(ti1-ti0))
+	
+	print('Calling Analytic Model')
+	ta0 = time.time()
+	for i in range(0,n):
+		Br,Bt,Bp = Model(r[i],theta[i],phi[i],equation_type='analytic')
+	ta1 = time.time()
+	print('Completed in {:f}s'.format(ta1-ta0))
+	

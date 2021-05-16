@@ -1,6 +1,8 @@
 import numpy as np
-from scipy.special import jv
+from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
+from ._NewSwitcher import _NewSwitcher
+import time
 
 def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			xp=-24.2,equation_type='hybrid',no_error_check=False,
@@ -263,22 +265,35 @@ endelse
 		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[0]
 		check2[inside_d]=1
 
-		for zcase in range(1,7):
-			s = _Switcher(check1,check2)
-			ind_case,lambda_max_brho,lambda_max_bz = s.indirect(zcase)
-			n_ind_case=len(ind_case)
+		s = _NewSwitcher(check1,check2)
 
+		for zcase in range(1,7):
+			
+			#ind_case,lambda_max_brho,lambda_max_bz = s.indirect(zcase)
+			ind_case,lambda_max_brho,lambda_max_bz = s.FetchCase(zcase)
+			n_ind_case=len(ind_case)
+			print('zcase {:d}, n indices: {:d}'.format(zcase,n_ind_case))
 			if n_ind_case > 0:
+				tbessel0 = time.time()
 				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho - 1),dlambda_brho ) 
 				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz - 1),dlambda_bz) 
-				beselj_rho_r0_0   = jv(0,lambda_int_brho*r0)# % Only 6 sets of values
-				beselj_z_r0_0     = jv(0,lambda_int_bz*r0)# % Only 6 sets of values
+				beselj_rho_r0_0   = j0(lambda_int_brho*r0)# % Only 6 sets of values
+				beselj_z_r0_0     = j0(lambda_int_bz*r0)# % Only 6 sets of values
+#				beselj_rho_r0_0   = jv(0,lambda_int_brho*r0)# % Only 6 sets of values
+#				beselj_z_r0_0     = jv(0,lambda_int_bz*r0)# % Only 6 sets of values
+
+				tbessel1 = time.time()
+				print('Calculating bessel functions: {:f}s'.format(tbessel1-tbessel0))
+
+
 
 				for zi in range(0,n_ind_case):
 					ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
  
-					beselj_rho_rho1_1 = jv(1, lambda_int_brho*rho1[ind_for_integral])
-					beselj_z_rho1_0   = jv(0,lambda_int_bz *rho1[ind_for_integral] )
+#					beselj_rho_rho1_1 = jv(1, lambda_int_brho*rho1[ind_for_integral])
+#					beselj_z_rho1_0   = jv(0,lambda_int_bz *rho1[ind_for_integral] )
+					beselj_rho_rho1_1 = j1(lambda_int_brho*rho1[ind_for_integral])
+					beselj_z_rho1_0   = j0(lambda_int_bz *rho1[ind_for_integral] )
 					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15
 						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 *np.sinh(d*lambda_int_brho) *np.exp(-abs_z1[ind_for_integral]*lambda_int_brho)/lambda_int_brho#
 						bz_int_funct   = beselj_z_rho1_0 *beselj_z_r0_0  *np.sinh(d*lambda_int_bz  ) *np.exp(-abs_z1[ind_for_integral]*lambda_int_bz  )/lambda_int_bz  #
