@@ -66,10 +66,6 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	Analytic Equations
 	==================
 	For the analytic equations, we use the equations provided in 
-	Connerney et al., 1981 
-	(https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
-	   
-	Other analytic approximations to the CAN sheet equations are 
 	provided by Edwards et al. 2001: 
 	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
 	
