@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
+from ._Analytic import _Analytic,_Finite
 
 def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			xp=-24.2,equation_type='hybrid',no_error_check=False,
-			Cartesian=False):
+			Cartesian=False,Edwards=True):
 	'''
 	Code to calculate the perturbation magnetic field produced by the 
 	Connerney (CAN) current sheet, which is represented by a finite disk 
@@ -69,11 +70,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 
 	Analytic Equations
 	==================
-	For the analytic equations, we use the equations provided in 
-	Connerney et al., 1981 
-	(https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
-	   
-	Other analytic approximations to the CAN sheet equations are 
+	For the analytic equations, we use the equations  
 	provided by Edwards et al. 2001: 
 	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
 	
@@ -193,8 +190,8 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 		raise SystemExit ('Error: Unrecognized equation type: should be analytic, integral or hybrid')
 
 
-	ind_analytic = np.where(do_integral == 0)[0]
-	ind_integral = np.where(do_integral == 1)[0]
+	ind_analytic = np.where(do_integral == False)[0]
+	ind_integral = np.where(do_integral)[0]
 
 	n_ind_analytic = ind_analytic.size
 	n_ind_integral = ind_integral.size
@@ -302,72 +299,14 @@ endelse
  Analytic equations
 ===========
 Connerney et al. 1981's equations for the field produced by a semi-infinite disk of thickness D, inner edge R0, outer edge R1 -
-see their equations A1 through A9
-the analytic equations for Brho and Bz vary depending on the region with respect to the current disk
-if rho1 lt r0_value then begin
-f1 = sqrt((z1-d_value)^2.d +r0_value^2.d)
-f2 = sqrt((z1+d_value)^2.d +r0_value^2.d)
-brho1 = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz1 = mui_2*(2.d*d_value*(z1^2. +r0_value^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-endif else if abs(z1) gt d_value then begin
- f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*d_value*z1/abs(z1)) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endif else begin
-f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*z1) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endelse
-
-
+Here we use the Edwards+ (2001) updated Connerney approximations for small rho (9a and 9b) and large rho (13a and 13b)
 RJW way
 Doing these 3 equations on the whole array to save getting confused by indices,  Will swap to just required indices later
 	'''
 	
 	if (n_ind_analytic != 0):
-		z1pd = z1+d;
-		z1md = z1-d
-
-		ind_LT = np.where((rho1 < r0) & (do_integral == False))[0]
-		ind_GE = np.where((rho1 >= r0) & (do_integral == False))[0]
-
-		n_ind_LT = ind_LT.size
-		n_ind_GE = ind_GE.size
-		r0_eq = r0*r0
-
-
-		if (n_ind_LT != 0): 
-			f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r0_eq)
-			f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r0_eq)
-			f1_cubed = f1*f1*f1
-			f2_cubed = f2*f2*f2
-			brho1[ind_LT] = mui_2*(rho1[ind_LT]/2)*((1/f1)-(1/f2))
-			bz1[ind_LT] = mui_2*(2*d*(1/np.sqrt(z1[ind_LT]*z1[ind_LT] +r0_eq)) - ((rho1_sq[ind_LT])/4)*((z1md[ind_LT]/f1_cubed) - (z1pd[ind_LT]/f2_cubed)))
-
-		if (n_ind_GE != 0):
-			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
-			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
-			f1_cubed = f1*f1*f1
-			f2_cubed = f2*f2*f2
-			bz1[ind_GE] = mui_2 *(2*d/np.sqrt(z1[ind_GE]*z1[ind_GE] +rho1_sq[ind_GE])-(r0_eq/4)*((z1md[ind_GE]/f1_cubed)-(z1pd[ind_GE]/f2_cubed)))
-
-			ind2_LT = np.where(abs_z1[ind_GE] > d)[0]
-			ind2_GE = np.where(abs_z1[ind_GE] <= d)[0]
-
-			n_ind2_LT = ind2_LT.size
-			n_ind2_GE = ind2_GE.size
-			
-			
-			if (n_ind2_LT != 0):
-				ind3 = ind_GE[ind2_LT]
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_LT]-f2[ind2_LT]+2*d*z1[ind3]/abs_z1[ind3])  - (r0_eq *rho1[ind3]/4) *((1/f1_cubed[ind2_LT])-(1/f2_cubed[ind2_LT])))
-			   
-			if (n_ind2_GE != 0):
-				ind3 = ind_GE[ind2_GE];
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3])- (r0_eq*rho1[ind3]/4)*((1/f1_cubed[ind2_GE])-(1/f2_cubed[ind2_GE])));
-
+		brho1[ind_analytic],bz1[ind_analytic] = _Analytic(rho1[ind_analytic],z1[ind_analytic],d,r0,mui_2,Edwards)
+	
 	'''
  =======
  New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
@@ -410,19 +349,45 @@ a1 = r1_value #% outer edge
 a1_sq = a1*a1# % outer edge squared
 
 	'''
-	r1_sq = r1*r1
-	z1md = z1-d
-	z1pd = z1+d
-	f1 = np.sqrt(z1md*z1md +r1_sq)
-	f2 = np.sqrt(z1pd*z1pd +r1_sq)
+	#### This bit is causing problems ####
+	# r1_sq = r1*r1
+	# z1md = z1-d
+	# z1pd = z1+d
+	# z1md_sq = z1md*z1md
+	# z1pd_sq = z1pd*z1pd
+	# f1 = np.sqrt(z1md_sq +r1_sq)
+	# f2 = np.sqrt(z1pd_sq +r1_sq)
 
-	brho_finite = mui_2*(rho1/2)*((1/f1)-(1/f2))
-	bz_finite   = mui_2*(2*d*(1/np.sqrt(z1*z1+r1_sq)) - ((rho1*rho1)/4)*((z1md/(f1*f1*f1)) - (z1pd/(f2*f2*f2))))
-	brho1       = brho1 - brho_finite
-	bphi_finite = -i_rho * brho_finite/mui_2#
-	bz1         = bz1 - bz_finite#
+	# f3_a = (r1_sq +    z1md_sq)
+	# f3   = (r1_sq - 2*z1md_sq)/(f3_a*f3_a*np.sqrt(f3_a))
+	# f4_a = (r1_sq +    z1pd_sq)
+	# f4   = (r1_sq - 2*z1pd_sq)/(f4_a*f4_a*np.sqrt(f4_a))
+
+	# brho_finite = mui_2*((rho1/2)*((1/f1)-(1/f2)) + (rho1*rho1*rho1/16)*(f3-f4)) #; Edwards et al eq 9a
+	# bz_finite   = mui_2*(np.log((z1pd+f2)/(z1md+f1))   + (rho1*rho1/4)*(((z1pd)/(f2*f2*f2)) - ((z1md)/(f1*f1*f1)))) #; Edwards et al eq 9b
+	# brho1       = brho1 - brho_finite
+	# bphi_finite = -i_rho * brho_finite/mui_2
+	# bz1   = bz1 - bz_finite
 
 
+	#### This bit is the original bit of code: ####
+	# r1_sq = r1*r1
+	# z1md = z1-d
+	# z1pd = z1+d
+	# f1 = np.sqrt(z1md*z1md +r1_sq)
+	# f2 = np.sqrt(z1pd*z1pd +r1_sq)
+
+	# brho_finite = mui_2*(rho1/2)*((1/f1)-(1/f2))
+	# bz_finite   = mui_2*(2*d*(1/np.sqrt(z1*z1+r1_sq)) - ((rho1*rho1)/4)*((z1md/(f1*f1*f1)) - (z1pd/(f2*f2*f2))))
+	# brho1       = brho1 - brho_finite
+	# bphi_finite = -i_rho * brho_finite/mui_2#
+	# bz1         = bz1 - bz_finite#
+	
+	#set Edwards=False for now, until we know what's wrong!
+	brho_finite,bz_finite = _Finite(rho1,z1,d,r1,mui_2,Edwards=False)
+	bphi_finite = -i_rho*brho_finite/mui_2
+	brho1 -= brho_finite
+	bz1 -= bz_finite
 
 	'''
 brho1, bphi1, and bz1 here are the ultimately calculated brho and bz values from the CAN model

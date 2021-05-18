@@ -388,6 +388,7 @@ a1_sq = a1*a1# % outer edge squared
 	brho1       = brho1 - brho_finite
 	bphi_finite = (-1)*i_rho_value * brho_finite/mui_2
 	bz1   = bz1 - bz_finite
+	
 
 
 

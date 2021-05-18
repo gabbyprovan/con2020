@@ -52,7 +52,7 @@ def _PlotComponent(t,x,xa,xh,xi,maps=[1,1,0,0],Comp='',nox=False):
 	
 	return ax
 
-def Test():
+def Test(Edwards=True):
 	'''
 	Run a quick test to see if the model works - this file might either
 	be removed from __init__ or removed completely at some point.
@@ -87,7 +87,7 @@ def Test():
 
 	#call the model code
 	print('Calling Model')
-	Br,Bt,Bp = Model(r,theta,phi)
+	Br,Bt,Bp = Model(r,theta,phi,Edwards=Edwards)
 
 	#create a plot
 	plt.figure(figsize=(11,8))
