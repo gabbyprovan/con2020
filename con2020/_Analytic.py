@@ -187,6 +187,8 @@ def _Finite(rho,z,D,a,mui2,Edwards=True):
 	a2 = a*a
 		
 	if Edwards:
-		return _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
+		#the following function will split it into large and small rho 
+		#approximations as appropriate
+		return _AnalyticEdwards(rho,z,D,a,mui2)
 	else:
 		return _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D)
