@@ -97,7 +97,6 @@ def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 	
 
 def _AnalyticOriginal(rho,z,D,a,mui2):
-	print('Original')
 	#these values appear to be used for all parts of the process
 	#so let's calculate them all
 	zpd = z + D
@@ -149,7 +148,6 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 		array of B in z direction
 	
 	'''
-	print('Edwards')
 	#these values appear to be used for all parts of the process
 	#so let's calculate them all
 	zpd = z + D
