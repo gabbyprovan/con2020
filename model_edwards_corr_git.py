@@ -65,7 +65,11 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	|Z| < D*1.5 and |Rho-R0| < 2.
 	Analytic Equations
 	==================
-	For the analytic equations, we use the equations  
+	For the analytic equations, we use the equations provided in 
+	Connerney et al., 1981 
+	(https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
+	   
+	Other analytic approximations to the CAN sheet equations are 
 	provided by Edwards et al. 2001: 
 	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
 	
@@ -180,7 +184,8 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	
 	brho1= np.zeros(N)
 	bz1= np.zeros(N)			
-
+	brho_finite=np.zeros(N)
+	bz_finite=np.zeros(N)
 
 	'''	
  ===========
@@ -279,7 +284,24 @@ endelse
  Analytic equations
 ===========
 Connerney et al. 1981's equations for the field produced by a semi-infinite disk of thickness D, inner edge R0, outer edge R1 -
-Here we use the Edwards+ (2001) updated Connerney approximations for small rho (9a and 9b) and large rho (13a and 13b)
+see their equations A1 through A9
+the analytic equations for Brho and Bz vary depending on the region with respect to the current disk
+if rho1 lt r0_value then begin
+f1 = sqrt((z1-d_value)^2.d +r0_value^2.d)
+f2 = sqrt((z1+d_value)^2.d +r0_value^2.d)
+brho1 = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
+bz1 = mui_2*(2.d*d_value*(z1^2. +r0_value^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
+endif else if abs(z1) gt d_value then begin
+ f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
+f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
+brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*d_value*z1/abs(z1)) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
+bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
+endif else begin
+f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
+f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
+brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*z1) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
+bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
+endelse
 RJW way
 Doing these 3 equations on the whole array to save getting confused by indices,  Will swap to just required indices later
 	'''
@@ -287,7 +309,7 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 	if (n_ind_analytic != 0):
 		z1pd = z1+d;
 		z1md = z1-d
-		r0_value_sq = r0_value*r0_value;
+		r0_sq = r0*r0
 
 		ind_LT = np.where((rho1 < r0) & (do_integral == 0))[0]
 		ind_GE = np.where((rho1 > r0) & (do_integral == 0))[0]
@@ -302,20 +324,20 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 			f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r0**2)
 			f1_cubed = f1**3
 			f2_cubed = f2**3
-			f3_a = (r0_value_sq +    z1md[ind_LT]*z1md[ind_LT])
-			f3   = (r0_value_sq - 2*z1md[ind_LT]*z1md[ind_LT])/(f3_a*f3_a*np.sqrt(f3_a))
-			f4_a = (r0_value_sq +    z1pd[ind_LT]*z1pd[ind_LT])
-			f4   = (r0_value_sq - 2*z1pd[ind_LT]*z1pd[ind_LT])/(f4_a*f4_a*np.sqrt(f4_a))
+			f3_a = (r0_sq +    z1md[ind_LT]*z1md[ind_LT])
+			f3   = (r0_sq - 2*z1md[ind_LT]*z1md[ind_LT])/(f3_a*f3_a*np.sqrt(f3_a))
+			f4_a = (r0_sq +    z1pd[ind_LT]*z1pd[ind_LT])
+			f4   = (r0_sq - 2*z1pd[ind_LT]*z1pd[ind_LT])/(f4_a*f4_a*np.sqrt(f4_a))
 
 			brho1[ind_LT] = mui_2*((rho1[ind_LT]/2)*((1/f1)-(1/f2))  + (rho1[ind_LT]*rho1[ind_LT]*rho1[ind_LT]/16)*(f3-f4)) #; Edwards et al eq 9a
-			bz1[  ind_LT] = mui_2*(alog((z1pd[ind_LT]+f2)/(z1md[ind_LT]+f1)) + (rho1[ind_LT]*rho1[ind_LT] / 4)*(((z1pd[ind_LT])/f2_cubed) - ((z1md[ind_LT])/f1_cubed)))   #; Edwards et al eq 9b
+			bz1[  ind_LT] = mui_2*(np.log((z1pd[ind_LT]+f2)/(z1md[ind_LT]+f1)) + (rho1[ind_LT]*rho1[ind_LT] / 4)*(((z1pd[ind_LT])/f2_cubed) - ((z1md[ind_LT])/f1_cubed)))   #; Edwards et al eq 9b
 
 		if (n_ind_GE != 0):
 			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
 			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
 			f1_cubed = f1**3
 			f2_cubed = f2**3
-			bz1[ind_GE] = mui_2*(np.log((z1pd[ind_GE]+f2)/(z1md[ind_GE]+f1)) + (r0_value_sq/4)*((z1pd[ind_GE]/f2_cubed) - (z1md[ind_GE]/f1_cubed)))  #;Edwards et al eq 13b
+			bz1[ind_GE] = mui_2*(np.log((z1pd[ind_GE]+f2)/(z1md[ind_GE]+f1)) + (r0_sq/4)*((z1pd[ind_GE]/f2_cubed) - (z1md[ind_GE]/f1_cubed)))  #;Edwards et al eq 13b
 
 			ind2_LT = np.where(abs_z1[ind_GE] > d)[0]
 			ind2_GE = np.where(abs_z1[ind_GE] < d)[0]
@@ -326,21 +348,74 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 			
 			if (n_ind2_LT != 0):
 				ind3 = ind_GE[ind2_LT];
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_LT]-f2[ind2_LT]+2*d_value*z1[ind3]/abs_z1[ind3]) - (r0_value_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_LT])-(1/f2_cubed[ind2_LT]))) #;Edwards et al eq 13a / Connerney et al eq A7
+				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_LT]-f2[ind2_LT]+2*d*z1[ind3]/abs_z1[ind3]) - (r0_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_LT])-(1/f2_cubed[ind2_LT]))) #;Edwards et al eq 13a / Connerney et al eq A7
   
 			if (n_ind2_GE != 0):
 				ind3 = ind_GE[ind2_GE];
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3]) - (r0_value_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_GE])-(1/f2_cubed[ind2_GE])))  #;Edwards et al eq 13a / Connerney et al eq A9
+				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3]) - (r0_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_GE])-(1/f2_cubed[ind2_GE])))  #;Edwards et al eq 13a / Connerney et al eq A9
        
-	'''
- =======
- New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
- =======
- bphi1 = 2.7975d*i_rho_value/rho1
- if abs(z1) lt d_value then bphi1 = bphi1*abs(z1)/d_value
- if z1 gt 0.d then bphi1 = (-1.d)*bphi1
-#% RJW way
-	'''
+
+#; Second current sheet (for subtraction)
+
+  
+#;From Stan Let us be clear.  Suppose the inner edge of the disc is at rho=R1, and the outer edge at rho=R2 (or whatever symbols you choose to use).  ;Then we model that by taking a semi-infinite disc of + current stretching from R1 out to infinity, and add to that another semi-infinite disc of – ;current with same mu0I0 stretching from R2 out to infinity (such that adding the two gives zero total current beyond R2.  Then in the following ranges ;of rho one uses the following approxes –
+
+#;Rho = 0 to R0:  Small rho approx. with R1 – small rho approx. with R1
+#;Rho = R0 to R1:  Large rho approx. with R1 - small rho approx. with R1
+#;Rho = R1 to infinity:  Large rho approx. with R1 – large rho approx. with R1
+		r1_sq = r1*r1
+		ind_LT = np.where((rho1 < r1) & (do_integral == 0))[0]
+		ind_GE = np.where((rho1 > r1) & (do_integral == 0))[0]
+
+		n_ind_LT = ind_LT.size
+		n_ind_GE = ind_GE.size
+
+
+
+		if (n_ind_LT != 0): 
+			f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r1**2)
+			f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r1**2)
+			f1_cubed = f1**3
+			f2_cubed = f2**3
+			f3_a = (r1_sq +    z1md[ind_LT]*z1md[ind_LT])
+			f3   = (r1_sq - 2*z1md[ind_LT]*z1md[ind_LT])/(f3_a*f3_a*np.sqrt(f3_a))
+			f4_a = (r1_sq +    z1pd[ind_LT]*z1pd[ind_LT])
+			f4   = (r1_sq - 2*z1pd[ind_LT]*z1pd[ind_LT])/(f4_a*f4_a*np.sqrt(f4_a))
+
+			brho_finite[ind_LT] = mui_2*((rho1[ind_LT]/2)*((1/f1)-(1/f2))  + (rho1[ind_LT]*rho1[ind_LT]*rho1[ind_LT]/16)*(f3-f4)) #; Edwards et al eq 9a
+			bz_finite[  ind_LT] = mui_2*(np.log((z1pd[ind_LT]+f2)/(z1md[ind_LT]+f1)) + (rho1[ind_LT]*rho1[ind_LT] / 4)*(((z1pd[ind_LT])/f2_cubed) - ((z1md[ind_LT])/f1_cubed)))   #; Edwards et al eq 9b
+
+		if (n_ind_GE != 0):
+			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
+			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
+			f1_cubed = f1**3
+			f2_cubed = f2**3
+			bz_finite[ind_GE] = mui_2*(np.log((z1pd[ind_GE]+f2)/(z1md[ind_GE]+f1)) + (r1_sq/4)*((z1pd[ind_GE]/f2_cubed) - (z1md[ind_GE]/f1_cubed)))  #;Edwards et al eq 13b
+
+			ind2_LT = np.where(abs_z1[ind_GE] > d)[0]
+			ind2_GE = np.where(abs_z1[ind_GE] < d)[0]
+
+			n_ind2_LT = ind2_LT.size
+			n_ind2_GE = ind2_GE.size
+			
+			
+			if (n_ind2_LT != 0):
+				ind3 = ind_GE[ind2_LT];
+				brho_finite[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_LT]-f2[ind2_LT]+2*d*z1[ind3]/abs_z1[ind3]) - (r1_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_LT])-(1/f2_cubed[ind2_LT]))) #;Edwards et al eq 13a / Connerney et al eq A7
+  
+			if (n_ind2_GE != 0):
+				ind3 = ind_GE[ind2_GE];
+				brho_finite[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3]) - (r1_sq*rho1[ind3]/4)*((1/f1_cubed[ind2_GE])-(1/f2_cubed[ind2_GE])))  #;Edwards et al eq 13a / Connerney et al eq A9
+       
+			brho1 = brho1 - brho_finite
+
+			bz1 = bz1 - bz_finite
+
+# =======
+# New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
+# =======
+
+
  
 	bphi1 = 2.7975*i_rho/rho1
 
@@ -354,43 +429,6 @@ Doing these 3 equations on the whole array to save getting confused by indices, 
 	if sized != 0:
 		bphi1[ind] =  -bphi1[ind] 
 	
-	'''
-=====================
-Account for finite nature of current sheet by subtracting the field values (using small rho approximation for a semi-infinite sheet)
-with a (inner edge) = r1 (= 51.4 Rj by default in CAN2020) following Edwards et al.
-Note that the Connerney et al. 1981 paper (and equations in the Dessler book) mentions a different approximation, which is simply
- subtracting 0.1*mu0i0/2 from Bz - and leaves Br unchanged (see Connerney et al. 1981 Figure 4).
-a1 = r1_value #outer edge
-f1 = sqrt((z1-d_value)^2.d +a1^2.d)
-f2 = sqrt((z1+d_value)^2.d +a1^2.d)
-brho_finite = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz_finite = mui_2*(2.d*d_value*(z1^2. +a1^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-brho1 = brho1 - brho_finite
-bphi_finite = (-1.d)*(brho_finite/mui_2)*i_rho_value
-bz1 = bz1 - bz_finite
-RJW way
-a1 = r1_value #% outer edge
-a1_sq = a1*a1# % outer edge squared
-	'''
-	a1_sq = r1_value * r1_value
-	z1md = z1-d_value
-	z1pd = z1+d_value
-	z1md_sq = z1md*z1md
-	z1pd_sq = z1pd*z1pd
-	f1 = np.sqrt(z1md_sq +a1_sq)
-	f2 =np.sqrt(z1pd_sq +a1_sq)
-	f3_a = (a1_sq +    z1md_sq)
-	f3   = (a1_sq - 2*z1md_sq)/(f3_a*f3_a*np.sqrt(f3_a))
-	f4_a = (a1_sq +    z1pd_sq)
-	f4   = (a1_sq - 2*z1pd_sq)/(f4_a*f4_a*np.sqrt(f4_a))
-	brho_finite = mui_2*((rho1/2)*((1/f1)-(1/f2)) + (rho1*rho1*rho1/16)*(f3-f4)) #; Edwards et al eq 9a
-	bz_finite   = mui_2*(np.log((z1pd+f2)/(z1md+f1))   + (rho1*rho1/4)*(((z1pd)/(f2*f2*f2)) - ((z1md)/(f1*f1*f1)))) #; Edwards et al eq 9b
-	brho1       = brho1 - brho_finite
-	bphi_finite = (-1)*i_rho_value * brho_finite/mui_2
-	bz1   = bz1 - bz_finite
-	
-
-
 
 	'''
 brho1, bphi1, and bz1 here are the ultimately calculated brho and bz values from the CAN model
@@ -446,4 +484,7 @@ bp = -bx*          sin_phi+by*          cos_phi#
 	bt =  bx2*cos_theta*cos_phi+by2*cos_theta*sin_phi-bz*sin_theta#
 	bp = -bx2*          sin_phi+by2*          cos_phi#
 
-	return br,bt,bp
+	returns=np.array([br,bt,bp])
+	return(returns)
+	
+
