@@ -384,7 +384,7 @@ a1_sq = a1*a1# % outer edge squared
 	# bz1         = bz1 - bz_finite#
 	
 	#set Edwards=False for now, until we know what's wrong!
-	brho_finite,bz_finite = _Finite(rho1,z1,d,r1,mui_2,Edwards=False)
+	brho_finite,bz_finite = _Finite(rho1,z1,d,r1,mui_2,Edwards=True)
 	bphi_finite = -i_rho*brho_finite/mui_2
 	brho1 -= brho_finite
 	bz1 -= bz_finite
