@@ -93,16 +93,137 @@ def Test(Edwards=True):
 	plt.figure(figsize=(11,8))
 	
 	ax0 = _PlotComponent(utc,Br,con20_analytic[0],con20_hybrid[0],
-			con20_integral[0],maps=[1,3,0,0],Comp=r'$B_{r}$',nox=True)
+			con20_integral[0],maps=[1,3,0,0],Comp=r'$B_{r}$ (nT)',nox=True)
 	ax1 = _PlotComponent(utc,Bt,con20_analytic[1],con20_hybrid[1],
-			con20_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$',nox=True)
+			con20_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$ (nT)',nox=True)
 	ax2 = _PlotComponent(utc,Bp,con20_analytic[2],con20_hybrid[2],
-			con20_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$',nox=False)
+			con20_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$ (nT)',nox=False)
 
 	
 	plt.subplots_adjust(hspace=0.0)
 
+def TestCompareAnalytic():
+	'''
+	Compare the two analytic models.
+	
+	'''
+	# this is the path of this source file
+	ModulePath = os.path.dirname(__file__)+'/'
 
+	#name and path of the test data file
+	fname = ModulePath + '__data/testdata.sav'
+
+	#read the data
+	print('Reading Data')
+	data = readsav(fname).test
+
+	#get the time
+	year = data.time_year[0]
+	dayno = data.time_ddate[0]
+	
+	#convert to another time format
+	Date,ut,utc = _ConvertTime(year,dayno)
+	
+	#and the model inputs (positions)
+	r = data.r[0]
+	theta = data.SYS3_COLAT_RADS[0]
+	phi = data.SYS3_ELONG_RADS[0]
+
+	#convert coordinates to get rho
+	xt = 9.3
+	xp = -24.2
+	Deg2Rad = np.pi/180.0
+	sin_theta = np.sin(theta)#
+	cos_theta = np.cos(theta)#
+	sin_phi   = np.sin(phi)#
+	cos_phi   = np.cos(phi)#
+
+	dipole_shift = xp*Deg2Rad # % xp_value is longitude of the dipole
+	x = r*sin_theta*np.cos(phi-dipole_shift)
+	y = r*sin_theta*np.sin(phi-dipole_shift)
+	z = r*cos_theta#]
+
+	theta_cs = xt*Deg2Rad # % dipole tilt is xt_value
+	x1 = x*np.cos(theta_cs) + z*np.sin(theta_cs)#
+	y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
+	z1 = z*np.cos(theta_cs) - x*np.sin(theta_cs)#
+	rho1_sq = x1*x1 + y1*y1
+	rho = np.sqrt(rho1_sq)
+		
+	#find where we cross each boundary
+	r0 = 7.8
+	r1 = 51.4
+
+	rg0 = rho > r0
+	rl0 = rho < r0
+	u0 = np.where((rg0[1:] & rl0[:-1]) | (rg0[:-1] & rl0[1:]))[0]
+	  
+	rg1 = rho > r1
+	rl1 = rho < r1
+	u1 = np.where((rg1[1:] & rl1[:-1]) | (rg1[:-1] & rl1[1:]))[0]
+	  
+	utcr0 = 0.5*(utc[u0] + utc[u0+1])
+	utcr1 = 0.5*(utc[u1] + utc[u1+1])
+	
+	#model fields to test against
+	con20_analytic= data.CS_FIELD_ANALYTIC[0]
+	con20_hybrid=  data.CS_FIELD_HYBRID[0]
+	con20_integral= data.CS_FIELD_INTEGRAL[0]
+
+	#call the model code
+	print('Calling Model')
+	Bro,Bto,Bpo = Model(r,theta,phi,Edwards=False,equation_type='analytic')
+	Bre,Bte,Bpe = Model(r,theta,phi,Edwards=True,equation_type='analytic')
+	Bri,Bti,Bpi = Model(r,theta,phi,Edwards=False,equation_type='hybrid')
+
+	#create a plot
+	plt.figure(figsize=(11,8))
+	ax0 = plt.subplot2grid((3,1),(0,0))
+	ax0.plot(utc,Bro,color='black',label='Connerney',zorder=1)
+	ax0.plot(utc,Bre,color='red',linestyle='--',label=r'Edwards',zorder=3)
+	ax0.plot(utc,Bri,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
+	
+	ax1 = plt.subplot2grid((3,1),(1,0))
+	ax1.plot(utc,Bto,color='black',label='Connerney',zorder=1)
+	ax1.plot(utc,Bte,color='red',linestyle='--',label='Edwards',zorder=3)
+	ax1.plot(utc,Bti,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
+	
+	ax2 = plt.subplot2grid((3,1),(2,0))
+	ax2.plot(utc,Bpo,color='black',label='Connerney',zorder=1)
+	ax2.plot(utc,Bpe,color='red',linestyle='--',label='Edwards',zorder=3)
+	ax2.plot(utc,Bpi,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
+	
+	#add lines indicating crossing r0 and r1
+	y0 = ax0.get_ylim()
+	ax0.set_ylim(y0)
+	y1 = ax1.get_ylim()
+	ax1.set_ylim(y1)
+	y2 = ax2.get_ylim()
+	ax2.set_ylim(y2)
+
+	ax0.vlines(utcr0,y0[0],y0[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
+	ax0.vlines(utcr1,y0[0],y0[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
+
+	ax1.vlines(utcr0,y1[0],y1[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
+	ax1.vlines(utcr1,y1[0],y1[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
+
+	ax2.vlines(utcr0,y2[0],y2[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
+	ax2.vlines(utcr1,y2[0],y2[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
+
+	ax0.set_ylabel(r'$B_{r}$ (nT)')
+	ax1.set_ylabel(r'$B_{\theta}$ (nT)')
+	ax2.set_ylabel(r'$B_{\phi}$ (nT)')
+
+	
+	ax0.set_xticks([])
+	ax1.set_xticks([])
+	TT.DTPlotLabel(ax2)
+	ax2.set_xlabel('UT')
+	ax0.legend()
+	ax1.legend()
+	ax2.legend()
+	
+	plt.subplots_adjust(hspace=0.0)
 
 def TestTimingIntVsAn(n=10):
 	'''
