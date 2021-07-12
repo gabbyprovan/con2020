@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
 from ._Analytic import _Analytic,_Finite
+from ._Integrate import _Integrate
 
 def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			xp=-24.2,equation_type='hybrid',no_error_check=False,
@@ -117,7 +118,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 		if not equation_type in ['analytic','hybrid','integral']:
 			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
 
-		if np.min(r) < 0 or np.max(r) > 200:
+		if np.min(r) <= 0 or np.max(r) >= 200:
 			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
 		if np.min(theta) < 0 or np.max(theta) > np.pi:
@@ -146,7 +147,7 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	dipole_shift = xp*Deg2Rad # % xp_value is longitude of the dipole
 	x = r*sin_theta*np.cos(phi-dipole_shift)
 	y = r*sin_theta*np.sin(phi-dipole_shift)
-	z = r*cos_theta#]
+	z = r*cos_theta
 
 #% Rotate by the amount of the dipole tilt
 #% (x1,y1,z1) are the tilted (theta) and shifted (phi) coordinates
@@ -236,7 +237,6 @@ endelse
 
 		#% lambda_max_brho = 4.0d  #% default integration limit for Brho function
 		#% lambda_max_bz   = 100d  #% default integration limit for Bz function
-		dlambda         = 1e-4  #% default step size for both
 		dlambda_brho    = 1e-4  #% default step size for Brho function
 		dlambda_bz      = 5e-5  #% default step size for Bz function
 
@@ -257,7 +257,7 @@ endelse
 		check1=np.abs(abs_z1[ind_integral]-d)
 		ncheck1=(check1.size)
 		check2=np.zeros(ncheck1)
-		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[0]
+		inside_d = np.where(abs_z1[ind_integral] <= d*1.1)[0]
 		check2[inside_d]=1
 
 		s = _Switcher(check1,check2)
@@ -268,8 +268,9 @@ endelse
 			n_ind_case=len(ind_case)
 
 			if n_ind_case > 0:
-				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho - 1),dlambda_brho ) 
-				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz - 1),dlambda_bz) 
+				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho),dlambda_brho ) 
+				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz),dlambda_bz) 
+
 				beselj_rho_r0_0   = j0(lambda_int_brho*r0)# % Only 6 sets of values
 				beselj_z_r0_0     = j0(lambda_int_bz*r0)# % Only 6 sets of values
 
@@ -282,14 +283,20 @@ endelse
 					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15
 						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 *np.sinh(d*lambda_int_brho) *np.exp(-abs_z1[ind_for_integral]*lambda_int_brho)/lambda_int_brho#
 						bz_int_funct   = beselj_z_rho1_0 *beselj_z_r0_0  *np.sinh(d*lambda_int_bz  ) *np.exp(-abs_z1[ind_for_integral]*lambda_int_bz  )/lambda_int_bz  #
-						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
+					#	brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,dx=dlambda_brho)
+					#	brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
+						brho1[ind_for_integral] = mui_2*2.0*_Integrate(brho_int_funct,dlambda_brho)
 						if z1[ind_for_integral] < 0:
 							brho1[ind_for_integral] = -brho1[ind_for_integral]
 					else:
 						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0*(np.sinh(z1[ind_for_integral]*lambda_int_brho)*np.exp(-d*lambda_int_brho))/lambda_int_brho#
 						bz_int_funct   = beselj_z_rho1_0  *beselj_z_r0_0  *(1.0 -np.cosh(z1[ind_for_integral]*lambda_int_bz  )*np.exp(-d*lambda_int_bz  ))/lambda_int_bz  #
-						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
-					bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
+						#brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
+						#brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,dx=dlambda_brho)#
+						brho1[ind_for_integral] = mui_2*2.0*_Integrate(brho_int_funct,dlambda_brho)#
+					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
+					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,dx=dlambda_bz)
+					bz1[ind_for_integral]   = mui_2*2.0*_Integrate(bz_int_funct,dlambda_bz)
 					
 	
 			

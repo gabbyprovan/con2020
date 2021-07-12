@@ -101,7 +101,6 @@ def ModelCart(x,y,z,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	r = np.sqrt(x**2 + y**2 + z**2)
 	theta = np.arccos(z/r)
 	phi = (np.arctan2(y,x) + (2*np.pi)) % (2*np.pi)
-	
 
 	#call Model()
 	return Model(r,theta,phi,mu_i=mu_i,i_rho=i_rho,r0=r0,r1=r1,d=d,xt=xt,
