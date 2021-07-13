@@ -327,3 +327,60 @@ def TestTimingIntVsAnSingle(n=10):
 	ta1 = time.time()
 	print('Completed in {:f}s'.format(ta1-ta0))
 	
+def Dump(n = 5):
+	import PyFileIO as pf
+	
+	# this is the path of this source file
+	ModulePath = os.path.dirname(__file__)+'/'
+
+	#name and path of the test data file
+	fname = ModulePath + '__data/testdata.sav'
+
+	#read the data
+	print('Reading Data')
+	data = readsav(fname).test
+
+	#get the time
+	year = data.time_year[0]
+	dayno = data.time_ddate[0]
+	
+	#convert to another time format
+	Date,ut,utc = _ConvertTime(year,dayno)
+	
+	#and the model inputs (positions)
+	
+	r = data.r[0][:n]
+	theta = data.SYS3_COLAT_RADS[0][:n]
+	phi = data.SYS3_ELONG_RADS[0][:n]
+	
+	#model fields to test against
+	con20_analytic= data.CS_FIELD_ANALYTIC[0][:n]
+	con20_hybrid=  data.CS_FIELD_HYBRID[0][:n]
+	con20_integral= data.CS_FIELD_INTEGRAL[0][:n]
+
+	#call the model code
+	print('Calling Model')
+	Br,Bt,Bp = Model(r,theta,phi,Edwards=True,equation_type='hybrid')
+	
+	#output
+	dtype = [	('Date','int32'),
+				('ut','float32'),
+				('r','float32'),
+				('t','float32'),
+				('p','float32'),
+				('Br','float32'),
+				('Bt','float32'),
+				('Bp','float32'),]
+	out = np.recarray(n,dtype=dtype)
+	
+	out.Date = Date[:n]
+	out.ut = ut[:n]
+	out.r = r
+	out.t = theta
+	out.p = phi
+	out.Br = Br
+	out.Bt = Bt
+	out.Bp = Bp
+	
+	#dump it to a file in the home directory
+	pf.WriteASCIIData('con2020dump.dat',out)
