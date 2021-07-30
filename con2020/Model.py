@@ -37,9 +37,9 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	d : float
 		Current sheet half thickness in Rj
 	xt : float
-		Dipole tilt in degrees
+		Current sheet tilt in degrees
 	xp : float
-		Dipole longitude (right handed) in degrees
+		Current sheet tilt longitude (right handed) in degrees
 	equation_type: str
 		Define method for calculating the current sheet field, may be 
 		one of the following: 'hybrid'|'analytic'|'integral'

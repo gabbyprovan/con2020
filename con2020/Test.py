@@ -225,7 +225,7 @@ def TestCompareAnalytic():
 	
 	plt.subplots_adjust(hspace=0.0)
 
-def TestTimingIntVsAn(n=10):
+def TestTimingIntVsAn(n=1000):
 	'''
 	Compare the timing of the integral Vs analytic equation types using
 	an array of positions.
@@ -276,7 +276,7 @@ def TestTimingIntVsAn(n=10):
 	ta1 = time.time()
 	print('Completed in {:f}s'.format(ta1-ta0))
 	
-def TestTimingIntVsAnSingle(n=10):
+def TestTimingIntVsAnSingle(n=1000):
 	'''
 	Compare the time taken to call model one position at a time.
 
