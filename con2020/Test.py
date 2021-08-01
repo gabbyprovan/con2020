@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import DateTimeTools as TT
 from .Model import Model
+from .OldModel import OldModel
 import time
 
 def _ConvertTime(year,dayno):
@@ -87,8 +88,10 @@ def Test(Edwards=True):
 
 	#call the model code
 	print('Calling Model')
-	Br,Bt,Bp = Model(r,theta,phi,Edwards=Edwards)
-
+	Br,Bt,Bp = OldModel(r,theta,phi,Edwards=Edwards)
+	print('Calling new code')
+	M = Model(Edwards=Edwards,CartesianIn=False,CartesianOut=False)
+	B = M.Field(r,theta,phi)
 	#create a plot
 	plt.figure(figsize=(11,8))
 	
@@ -98,7 +101,9 @@ def Test(Edwards=True):
 			con20_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$ (nT)',nox=True)
 	ax2 = _PlotComponent(utc,Bp,con20_analytic[2],con20_hybrid[2],
 			con20_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$ (nT)',nox=False)
-
+	ax0.plot(utc,B[:,0],color='magenta',label=r'$B_{r}$ (nT) New Code')
+	ax1.plot(utc,B[:,1],color='magenta',label=r'$B_{\theta}$ (nT) New Code')
+	ax2.plot(utc,B[:,2],color='magenta',label=r'$B_{\phi}$ (nT) New Code')
 	
 	plt.subplots_adjust(hspace=0.0)
 
@@ -255,24 +260,40 @@ def TestTimingIntVsAn(n=1000):
 	#read the data
 	print('Reading Data')
 	data = readsav(fname).test
+
+	#create the new model object
+	MI = Model(equation_type='integral',CartesianIn=False,CartesianOut=False)
+	MA = Model(equation_type='analytic',CartesianIn=False,CartesianOut=False)
 	
 	#and the model inputs (positions)
 	r = data.r[0][:n]
 	theta = data.SYS3_COLAT_RADS[0][:n]
 	phi = data.SYS3_ELONG_RADS[0][:n]
-	print(r.size)
 	
 	print('Testing {:d} model vectors'.format(n))
 	#call the model code
+	print('Calling Old Integral Model')
+	ti0 = time.time()
+	Br,Bt,Bp = OldModel(r,theta,phi,equation_type='integral')
+	ti1 = time.time()
+	print('Completed in {:f}s'.format(ti1-ti0))
+	
+	print('Calling Old Analytic Model')
+	ta0 = time.time()
+	Br,Bt,Bp = OldModel(r,theta,phi,equation_type='analytic')
+	ta1 = time.time()
+	print('Completed in {:f}s'.format(ta1-ta0))
+	
+	#call the model code
 	print('Calling Integral Model')
 	ti0 = time.time()
-	Br,Bt,Bp = Model(r,theta,phi,equation_type='integral')
+	B = MI.Field(r,theta,phi)
 	ti1 = time.time()
 	print('Completed in {:f}s'.format(ti1-ti0))
 	
 	print('Calling Analytic Model')
 	ta0 = time.time()
-	Br,Bt,Bp = Model(r,theta,phi,equation_type='analytic')
+	B = MA.Field(r,theta,phi)
 	ta1 = time.time()
 	print('Completed in {:f}s'.format(ta1-ta0))
 	
@@ -311,19 +332,38 @@ def TestTimingIntVsAnSingle(n=1000):
 	theta = data.SYS3_COLAT_RADS[0][:n]
 	phi = data.SYS3_ELONG_RADS[0][:n]
 	
+	#create the new model object
+	MI = Model(equation_type='integral',CartesianIn=False,CartesianOut=False)
+	MA = Model(equation_type='analytic',CartesianIn=False,CartesianOut=False)
+	
 	print('Testing {:d} model vectors'.format(n))
+	#call the model code
+	print('Calling Old Integral Model')
+	ti0 = time.time()
+	for i in range(0,n):
+		Br,Bt,Bp = OldModel(r[i],theta[i],phi[i],equation_type='integral')
+	ti1 = time.time()
+	print('Completed in {:f}s'.format(ti1-ti0))
+	
+	print('Calling Old Analytic Model')
+	ta0 = time.time()
+	for i in range(0,n):
+		Br,Bt,Bp = OldModel(r[i],theta[i],phi[i],equation_type='analytic')
+	ta1 = time.time()
+	print('Completed in {:f}s'.format(ta1-ta0))
+	
 	#call the model code
 	print('Calling Integral Model')
 	ti0 = time.time()
 	for i in range(0,n):
-		Br,Bt,Bp = Model(r[i],theta[i],phi[i],equation_type='integral')
+		B = MI.Field(r[i],theta[i],phi[i])
 	ti1 = time.time()
 	print('Completed in {:f}s'.format(ti1-ti0))
 	
 	print('Calling Analytic Model')
 	ta0 = time.time()
 	for i in range(0,n):
-		Br,Bt,Bp = Model(r[i],theta[i],phi[i],equation_type='analytic')
+		B = MA.Field(r[i],theta[i],phi[i])
 	ta1 = time.time()
 	print('Completed in {:f}s'.format(ta1-ta0))
 	

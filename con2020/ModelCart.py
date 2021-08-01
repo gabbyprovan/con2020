@@ -1,5 +1,5 @@
 import numpy as np
-from .Model import Model
+from .OldModel import OldModel
 
 def ModelCart(x,y,z,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 			xp=-24.2,equation_type='hybrid',no_error_check=False,
@@ -103,7 +103,7 @@ def ModelCart(x,y,z,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 	phi = (np.arctan2(y,x) + (2*np.pi)) % (2*np.pi)
 
 	#call Model()
-	return Model(r,theta,phi,mu_i=mu_i,i_rho=i_rho,r0=r0,r1=r1,d=d,xt=xt,
+	return OldModel(r,theta,phi,mu_i=mu_i,i_rho=i_rho,r0=r0,r1=r1,d=d,xt=xt,
 				xp=xp,equation_type=equation_type,
 				no_error_check=no_error_check,Cartesian=Cartesian)
 	

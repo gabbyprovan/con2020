@@ -1,122 +1,239 @@
 import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
-from ._Analytic import _Analytic,_Finite
+from ._Analytic import _AnalyticEdwards,_AnalyticOriginal,_FiniteEdwards,_FiniteOriginal
 from ._Integrate import _Integrate
 
-def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
-			xp=-24.2,equation_type='hybrid',no_error_check=False,
-			Cartesian=False,Edwards=True):
-	'''
-	Code to calculate the perturbation magnetic field produced by the 
-	Connerney (CAN) current sheet, which is represented by a finite disk 
-	of current.	This disk has variable parameters including the current 
-	density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
-	is centered on the magnetic equator (shifted in longitude and tilted 
-	according to the dipole field parameters of an internal field model 
-	like VIP4 or JRM09). This 2020 version includes a radial current per 
-	Connerney et al. (2020), 
-	https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-	Inputs
-	======
-	r : float
-		Radial distance, in Rj (System III)
-	theta : float
-		Colatitude, in radians (System III)
-	phi : float
-		longitude, right handed, in radians (System III)
-	mu_i : float
-		mu0i0/2 term (current sheet current density), in nT
-	i_rho : float
-		azimuthal current term from Connerney et al., 2020
-	r0 : float
-		Inner edge of current disk in Rj
-	r1 : float
-		Outer edge of current disk in Rj
-	d : float
-		Current sheet half thickness in Rj
-	xt : float
-		Current sheet tilt in degrees
-	xp : float
-		Current sheet tilt longitude (right handed) in degrees
-	equation_type: str
-		Define method for calculating the current sheet field, may be 
-		one of the following: 'hybrid'|'analytic'|'integral'
-		See notes below for more information.
-	no_error_check : bool
-		Do not do extra checks that inputs are valid.		
-	Cartesian : bool
-		If True, magnetic field is returned in Cartesian coordinates,
-		otherwise the returned values are in spherical polar coordinates
-
-	Returns
-	========
-	Magnetic field in SIII coordinates (right handed)
-	br : float
-		Radial field, in nT (or Bx if Cartesian == True)
-	bt : float
-		Meridional field, in nT (or By if Cartesian == True)
-	bp : float
-		Azimuthal field, in nT (or Bz if Cartesian == True)
-
-	This code takes a hybrid approach to calculating the current sheet 
-	field, using the integral equations in some regions and the analytic 
-	equations in others. Following Connerney et al. 1981, figure A1, and 
-	Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
-	equations is most important near rho = r0 and z = 0.
-	
-	By default, this code uses the analytic equations everywhere except 
-	|Z| < D*1.5 and |Rho-R0| < 2.
-
-	Analytic Equations
-	==================
-	For the analytic equations, we use the equations  
-	provided by Edwards et al. 2001: 
-	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
-	
-	
-	Integral Equations
-	==================
-	For the integral equations we use the Bessel functions from 
-	Connerney et al. 1981, eqs. 14, 15, 17, 18.
-	
-	We do not integrate lambda from zero to infinity, but vary the 
-	integration limit depending on the value of the Bessel functions.
-	
-	Other Notes
-	===========
-	
-	Keyword equation_type can be set to 'integral' or 'analytic' if the 
-	user wants to force using the integral or analytic equations ,by 
-	Marissa Vogt, March 2021.
-	
-	RJ Wilson did some speedups and re-formatting of lines, also March 2021
-	'''
-
-
-	#convert inputs to numpy arrays if scalars are provided
-	if not hasattr(r,'__iter__'):
-		r     = np.array([r    ])
-		theta = np.array([theta])
-		phi   = np.array([phi  ])
+class Model(object):
+	def __init__(self,**kwargs):
 		
-	#convert lists/tuples to numpy arrays
-	elif (not (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))):
-		r     = np.array(r    ).astype('float64')
-		theta = np.array(theta).astype('float64')
-		phi   = np.array(phi  ).astype('float64')
+		
+		#list the default arguments here
+		defargs = {	'mu_i'			: 139.6,
+					'i_rho' 		: 16.7,
+					'r0'			: 7.8,
+					'r1'			: 51.4,
+					'd'				: 3.6,
+					'xt'			: 9.3,
+					'xp'			: -24.2,
+					'equation_type'	: 'hybrid',
+					'error_check'	: True,
+					'CartesianIn'	: True,
+					'CartesianOut'	: True,
+					'Edwards'		: True }
+					
+		#list the long names
+		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
+						'r0'	: 'r0__inner_rj',
+						'r1'	: 'r1__outer_rj',
+						'd'		: 'd__cs_half_thickness_rj',
+						'xt'	: 'xt__cs_tilt_degs',
+						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
+						'i_rho'	: 'i_rho__azimuthal_current_density_nT'		  }
+						
+		#check input kwargs
+		#for those which exist (either in long or short name form) add
+		#them to this object using the short name as the object tag
+		#Otherwise use the default value
+		
+		#the input keys
+		ikeys = list(kwargs.keys())
+		
+		#default keys
+		dkeys = list(defargs.keys())
+		
+		#short and long name keys
+		skeys = list(longnames.keys())
+		lkeys = [longnames[k] for k in skeys]
+			
+		#loop through each one		
+		for k in dkeys:
+			if k in ikeys:
+				#short name found in kwargs - add to this object
+				setattr(self,k,kwargs[k])
+			elif longnames.get(k,'') in ikeys:
+				#long name found - add to object
+				setattr(self,k,kwargs[longnames[k]])
+			else:
+				#key not found, use default
+				setattr(self,k,defargs[k])
+				
+		
+		#check for additional keys and issue a warning
+		for k in ikeys:
+			if not ((k in skeys) or (k in lkeys) or (k in dkeys)):
+				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
+		
+		#now do the checks
+		self.equation_type = self.equation_type.lower()
+		if not self.equation_type in ['analytic','hybrid','integral']:
+			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")	
+		
+		ckeys = ['mu_i','i_rho','r0','r1','d','xt']
+		for k in ckeys:
+			x = getattr(self,k)
+			if (x <= 0) or (np.isfinite(x) == False):
+				raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
 
-	#are values already in numpy arrays?
-	elif (    (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))):
-		pass # all good!
-	else:
-		raise SystemExit ('ERROR: Input coordinate arrays must all be scalars or lists/tuples or numpy arrays.')
+		if (np.isfinite(self.xp) == False):
+			raise SystemExit("'xp' should be finite")	
+			
+		#set the analytic function to use
+		if self.Edwards:
+			self._AnalyticFunc = _AnalyticEdwards
+		else:
+			self._AnalyticFunc = _AnalyticOriginal
+			
+		#set the analytic function to use for the outer bit of the current sheet
+		if self.Edwards:
+			self._Finite = _FiniteEdwards
+		else:
+			self._Finite = _FiniteOriginal		
+			
+		#set the integral functions (scalar and vector)
+		if self.equation_type == 'analytic':
+			self._ModelFunc = self._Analytic
+		elif self.equation_type == 'integral':
+			self._ModelFunc = self._Integral
+		else:
+			self._ModelFunc = self._Hybrid
+				
+		#some constants
+		self.Deg2Rad = np.pi/180.0
+		self.dipole_shift = self.xp*self.Deg2Rad # xp is longitude of the current sheet
+		self.theta_cs = self.xt*self.Deg2Rad # current sheet tilt
 
-	equation_type = equation_type.lower()
-	if not no_error_check:
-		if not equation_type in ['analytic','hybrid','integral']:
-			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
+		#this stuff is for integration
+		self.dlambda_brho    = 1e-4  #% default step size for Brho function
+		self.dlambda_bz      = 5e-5  #% default step size for Bz function
+		
+		#each of the following variables will be indexed by zcase (starting at 0)
+		self.lambda_max_brho = [4,4,40,40,100,100]
+		self.lambda_max_bz = [100,20,100,20,100,20]
+		
+		self.lambda_int_brho = []
+		self.lambda_int_bz = []
+		
+		self.beselj_rho_r0_0 = []
+		self.beselj_z_r0_0 = []
+
+		for i in range(0,6):
+			#save the lambda arrays
+			self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
+			self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
+			
+			#save the Bessel functions
+			self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
+			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
+	
+	def _ConvInputCart(self,x0,y0,z0):
+		
+		#this bit needs rewriting/simplifying
+	
+		#convert to spherical polar coords
+		r = np.sqrt(x0**2 + y0**2 + z0**2)
+		theta = np.arccos(z0/r)
+		phi = (np.arctan2(y0,x0) + (2*np.pi)) % (2*np.pi)		
+		
+		sin_theta = np.sin(theta)#
+		cos_theta = np.cos(theta)#
+		sin_phi   = np.sin(phi)#
+		cos_phi   = np.cos(phi)#
+
+		x = r*sin_theta*np.cos(phi-self.dipole_shift)
+		y = r*sin_theta*np.sin(phi-self.dipole_shift)
+		z = r*cos_theta
+		
+		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)#
+		y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
+		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)#		
+		
+		
+		return x1,y1,z1,cos_theta,sin_theta,cos_phi,sin_phi
+		
+	def _ConvOutputCart(self,x1,y1,Brho1,Bphi1,Bz1):
+		
+		rho = np.sqrt(x1*x1 + y1*y1)
+		cosphi1 = x1/rho
+		sinphi1 = y1/rho
+		
+		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+		
+		costheta_cs = np.cos(self.theta_cs)
+		sintheta_cs = np.sin(self.theta_cs)
+		Bx = Bx1*costheta_cs - Bz1*sintheta_cs
+		Bz = Bx1*sintheta_cs + Bz1*costheta_cs		
+	
+		cos_xp = np.cos(self.dipole_shift)
+		sin_xp = np.sin(self.dipole_shift)
+		Bx2 = Bx*cos_xp - By1*sin_xp
+		By2 = By1*cos_xp + Bx*sin_xp	
+	
+		return Bx2,By2,Bz
+		
+	
+	def _ConvInputPol(self,r,theta,phi):
+		
+	
+		sin_theta = np.sin(theta)#
+		cos_theta = np.cos(theta)#
+		sin_phi   = np.sin(phi)#
+		cos_phi   = np.cos(phi)#
+
+		x = r*sin_theta*np.cos(phi-self.dipole_shift)
+		y = r*sin_theta*np.sin(phi-self.dipole_shift)
+		z = r*cos_theta
+		
+		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)#
+		y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
+		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)#		
+		
+		
+		return x1,y1,z1,cos_theta,sin_theta,cos_phi,sin_phi
+
+
+	def _ConvOutputPol(self,costheta,sintheta,cosphi,sinphi,
+						x1,y1,Brho1,Bphi1,Bz1):
+		
+		rho = np.sqrt(x1*x1 + y1*y1)
+		cosphi1 = x1/rho
+		sinphi1 = y1/rho
+		
+		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+		
+		costheta_cs = np.cos(self.theta_cs)
+		sintheta_cs = np.sin(self.theta_cs)
+		Bx = Bx1*costheta_cs - Bz1*sintheta_cs
+		Bz = Bx1*sintheta_cs + Bz1*costheta_cs		
+	
+		cos_xp = np.cos(self.dipole_shift)
+		sin_xp = np.sin(self.dipole_shift)
+		Bx2 = Bx*cos_xp - By1*sin_xp
+		By2 = By1*cos_xp + Bx*sin_xp	
+
+		Br =  Bx2*sintheta*cosphi+By2*sintheta*sinphi+Bz*costheta#
+		Bt =  Bx2*costheta*cosphi+By2*costheta*sinphi-Bz*sintheta#
+		Bp = -Bx2*         sinphi+By2*         cosphi#
+	
+		return Br,Bt,Bp
+
+		
+	def _CheckInputCart(self,x,y,z):
+
+		if (np.size(x) != np.size(y)) or (np.size(x) != np.size(z)):
+			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
+		
+		#calculate r
+		r = np.sqrt(x*x + y*y + z*z)
+
+		if np.min(r) <= 0 or np.max(r) >= 200:
+			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
+
+
+	def _CheckInputPol(self,r,theta,phi):
 
 		if np.min(r) <= 0 or np.max(r) >= 200:
 			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
@@ -130,324 +247,287 @@ def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
 		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
+	def _Bphi(self,rho,abs_z,z):
 		
-#% Convert to cartesian coordinates and rotate into magnetic longitude
-#% (x,y,z) are the shifted (phi) coordinates
-#  dipole_shift = double(xp_value)*!dpi/180. #xp_value is longitude of the dipole
-#  x = r*sin(theta)*cos(phi-dipole_shift)
-#  y = r*sin(theta)*sin(phi-dipole_shift)
-#  z = r*cos(theta)
-#% RJW way
-	Deg2Rad = np.pi/180.0
-	sin_theta = np.sin(theta)#
-	cos_theta = np.cos(theta)#
-	sin_phi   = np.sin(phi)#
-	cos_phi   = np.cos(phi)#
-
-	dipole_shift = xp*Deg2Rad # % xp_value is longitude of the dipole
-	x = r*sin_theta*np.cos(phi-dipole_shift)
-	y = r*sin_theta*np.sin(phi-dipole_shift)
-	z = r*cos_theta
-
-#% Rotate by the amount of the dipole tilt
-#% (x1,y1,z1) are the tilted (theta) and shifted (phi) coordinates
-#  theta_cs = double(xt_value)*!dpi/180. #dipole tilt is xt_value
-#  x1 = x*cos(theta_cs) + z*sin(theta_cs)
-#  y1 = y
-#  z1 = z*cos(theta_cs) - x*sin(theta_cs)
-#  rho1 = sqrt(x1^2.d + y1^2.d) #cylindrical radial distance
-
-#% RJW way
-	theta_cs = xt*Deg2Rad # % dipole tilt is xt_value
-	x1 = x*np.cos(theta_cs) + z*np.sin(theta_cs)#
-	y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
-	z1 = z*np.cos(theta_cs) - x*np.sin(theta_cs)#
-	rho1_sq = x1*x1 + y1*y1
-	rho1 = np.sqrt(rho1_sq) # %cylindrical radial distance
-	mui_2 = mu_i
-
-
-#% ===========
-#% Decide whether to use integral equations or analytic equations
-#% ===========
-#  if ((abs(z1) le d_value*1.5d and abs(rho1-r0_value) le 2.d) or eq_type eq 'integral') then do_integral = 1 else do_integral = 0
-#  if eq_type eq 'analytic' then do_integral = 0
-#% RJW way - mainly for clarity
-
+		Bphi = 2.7975*self.i_rho/rho
+		
+		if np.size(rho) == 1:
+			if abs_z < self.d:
+				Bphi *= (abs_z/self.d)
+			if z > 0:
+				Bphi = -Bphi
+		else:
+			ind = np.where(abs_z < self.d)[0]
+			if ind.size > 0:
+				Bphi[ind] *= (abs_z[ind]/self.d)
+			ind = np.where(z > 0)[0]
+			if ind.size > 0:
+				Bphi[ind] = -Bphi[ind]
+		
+		return Bphi
+		
+	def _Analytic(self,x,y,z):
 	
-
-	abs_z1 = np.abs(z1)#
-	N = z1.size
-
-	do_integral=np.zeros(N,dtype='bool')
-	if equation_type == 'analytic':
-		do_integral[0:N] = False
-	elif equation_type == 'integral':
-		do_integral[0:N] = True
-	elif equation_type == 'hybrid':
-		sel_hybrid = np.where((abs_z1 <= d*1.5) & (np.abs(rho1-r0) <= 2))[0]
-		do_integral[sel_hybrid] = True
-	else:
-		raise SystemExit ('Error: Unrecognized equation type: should be analytic, integral or hybrid')
-
-
-	ind_analytic = np.where(do_integral == False)[0]
-	ind_integral = np.where(do_integral)[0]
-
-	n_ind_analytic = ind_analytic.size
-	n_ind_integral = ind_integral.size
-	
-	brho1= np.zeros(N)
-	bz1= np.zeros(N)			
-
-
-	'''	
-
- ===========
-Integral equations - Brho and Bz eqs. vary depending on region with respect to the disk
-
-lambda_max_brho = 4.#default integration limit for Brho function
-lambda_max_bz = 100.#default integration limit for Bz function
-lambda = 1e-4 #default step size for both
-dlambda_brho = 1e-4#default step size for Brho function
-dlambda_bz = e-5#default step size for Bz function
-if abs(abs(z1)-d_value) lt .7 then lambda_max_brho = 40.d #Z > D
-if abs(abs(z1)-d_value) lt .1 then lambda_max_brho = 100.d #Z very close to D
-if abs(z1) gt d_value*1.1 then lambda_max_bz = 20.d #Small Z
-lambda_int_brho = dindgen(lambda_max_brho/dlambda_brho)*dlambda_brho
-lambda_int_bz = dindgen(lambda_max_bz/dlambda_bz)*dlambda_bz
-sign_z = z1/abs(z1)
-if abs(z1) gt d_value then begin #Connerney et al. 1981 eqs. 14 and 15
-brho_int_funct = beselj(lambda_int_brho*rho1,1)*beselj(lambda_int_brho*r0_value,0)*sinh(d_value*lambda_int_brho)*exp((-1.d)*abs(z1)*lambda_int_brho)/lambda_int_brho
-brho1 = sign_z*mui_2*2.d*int_tabulated(lambda_int_brho(where(abs(brho_int_funct) lt 1e99)),brho_int_funct(where(abs(brho_int_funct) lt 1e99)))
-bz_int_funct = beselj(lambda_int_bz*rho1,0)*beselj(lambda_int_bz*r0_value,0)*sinh(d_value*lambda_int_bz)*exp((-1.d)*abs(z1)*lambda_int_bz)/lambda_int_bz
-bz1 = mui_2*2.d*int_tabulated(lambda_int_bz(where(abs(bz_int_funct) lt 1e99)),bz_int_funct(where(abs(bz_int_funct)lt 1e99)))
-endif else begin #Connerney et al. 1981 eqs. 17 and 18
-brho_int_funct = beselj(lambda_int_brho*rho1,1)*beselj(lambda_int_brho*r0_value,0)*sinh(z1*lambda_int_brho)*exp((-1.d)*d_value*lambda_int_brho)/lambda_int_brho
-brho1 = mui_2*2.d*int_tabulated(lambda_int_brho(where(abs(brho_int_funct) lt 1e99)),brho_int_funct(where(abs(brho_int_funct) lt 1e99)))
-bz_int_funct = beselj(lambda_int_bz*rho1,0)*beselj(lambda_int_bz*r0_value,0)*(1.d - cosh(z1*lambda_int_bz)*exp((-1.d)*d_value*lambda_int_bz))/lambda_int_bz
-bz1 = mui_2*2.d*int_tabulated(lambda_int_bz(where(abs(bz_int_funct) lt 1e99)),bz_int_funct(where(abs(bz_int_funct)lt 1e99)))
-endelse
-
-    #% RJW way
-	
-			'''	
-
-	if (n_ind_integral != 0):
-
-		#% lambda_max_brho = 4.0d  #% default integration limit for Brho function
-		#% lambda_max_bz   = 100d  #% default integration limit for Bz function
-		dlambda_brho    = 1e-4  #% default step size for Brho function
-		dlambda_bz      = 5e-5  #% default step size for Bz function
-
-
-		#%      if abs(abs_z1[ind_for_integral] - d_value) lt 0.7d then BEGIN
-		#%        if abs(abs_z1[ind_for_integral] - d_value) lt 0.1d then BEGIN
-		#%          lambda_max_brho = 100.0d #% Z very close to D
-		#%        ENDIF ELSE BEGIN
-		#%          lambda_max_brho = 40.0d #% Z > D
-		#%        ENDELSE
-		#%      ENDIF ELSE BEGIN
-		#%        lambda_max_brho = 4.0d  #% default integration limit for Brho function
-		#%      ENDELSE
-		#%      #%if (abs_z1 gt d_value*1.1d) then lambda_max_bz = 20.d else lambda_max_bz   = 100d#% Small Z or default in else
-		#%      if (abs_z1[ind_for_integral] le d_value*1.1d) then lambda_max_bz = 100d else lambda_max_bz   = 20d #% Small Z or default in else
+		#a couple of other bits needed
+		rho_sq = x*x + y*y
+		rho = np.sqrt(rho_sq)
+		abs_z = np.abs(z)
+		
+		#calculate the analytic solution first for Brho and Bz
+		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+		
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz
+		
+		
+	def _IntegralScalar(self,x,y,z):
+		
+		#a couple of other bits needed
+		rho_sq = x*x + y*y
+		rho = np.sqrt(rho_sq)
+		abs_z = np.abs(z)
+		
+		#check which "zcase" we need for this vector
+		check1 = np.abs(abs_z - self.d)		
+		check2 = abs_z <= self.d*1.1
+		
+		if check1 >= 0.7:
+			#case 1 or 2
+			zc = 1
+		elif (check1 < 0.7) and (check1 >= 0.1):
+			#case 3 or 4
+			zc = 3
+		else:
+			#case 5 or 6
+			zc = 5
+		#this bit does two things - it both takes into account the
+		#check2 thing and it makes zc an index in range 0 to 5 as 
+		#opposed to the zcase 1 to 6, so zi = zcase -1
+		zc -= np.int(check2)
+		
+		#do the integration
+		beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho)
+		beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho)
+		if (abs_z > self.d): #% Connerney et al. 1981 eqs. 14 and 15
+			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+							*np.sinh(self.d*self.lambda_int_brho[zc]) \
+							*np.exp(-abs_z*self.lambda_int_brho[zc]) \
+							/self.lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0 *self.beselj_z_r0_0[zc] \
+							*np.sinh(self.d*self.lambda_int_bz[zc]) \
+							*np.exp(-abs_z*self.lambda_int_bz[zc]) \
+							/self.lambda_int_bz[zc]  
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+			if z < 0:
+				Brho = -Brho
+		else:
+			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+							*(np.sinh(z*self.lambda_int_brho[zc]) \
+							*np.exp(-self.d*self.lambda_int_brho[zc])) \
+							/self.lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0  *self.beselj_z_r0_0[zc] \
+							*(1.0 -np.cosh(z*self.lambda_int_bz[zc]) \
+							*np.exp(-self.d*self.lambda_int_bz[zc])) \
+							/self.lambda_int_bz[zc]
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)#
+		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+		
+		return Brho,Bz
 
 
-		check1=np.abs(abs_z1[ind_integral]-d)
-		ncheck1=(check1.size)
-		check2=np.zeros(ncheck1)
-		inside_d = np.where(abs_z1[ind_integral] <= d*1.1)[0]
-		check2[inside_d]=1
-
+	def _IntegralVector(self,x,y,z):
+		
+		#a couple of other bits needed
+		rho_sq = x*x + y*y
+		rho = np.sqrt(rho_sq)
+		abs_z = np.abs(z)
+		
+		#check which "zcase" we need for this vector
+		check1 = np.abs(abs_z - self.d)		
+		check2 = abs_z <= self.d*1.1
 		s = _Switcher(check1,check2)
+
+		#create the output arrays for this function
+		Brho = np.zeros(np.size(x),dtype='float64')
+		Bz = np.zeros(np.size(x),dtype='float64')
 
 		for zcase in range(1,7):
 			
 			ind_case,lambda_max_brho,lambda_max_bz = s.FetchCase(zcase)
 			n_ind_case=len(ind_case)
-
+			zc = zcase - 1
+			
 			if n_ind_case > 0:
-				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho),dlambda_brho ) 
-				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz),dlambda_bz) 
-
-				beselj_rho_r0_0   = j0(lambda_int_brho*r0)# % Only 6 sets of values
-				beselj_z_r0_0     = j0(lambda_int_bz*r0)# % Only 6 sets of values
-
 
 				for zi in range(0,n_ind_case):
-					ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
- 
-					beselj_rho_rho1_1 = j1(lambda_int_brho*rho1[ind_for_integral])
-					beselj_z_rho1_0   = j0(lambda_int_bz *rho1[ind_for_integral] )
-					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15
-						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 *np.sinh(d*lambda_int_brho) *np.exp(-abs_z1[ind_for_integral]*lambda_int_brho)/lambda_int_brho#
-						bz_int_funct   = beselj_z_rho1_0 *beselj_z_r0_0  *np.sinh(d*lambda_int_bz  ) *np.exp(-abs_z1[ind_for_integral]*lambda_int_bz  )/lambda_int_bz  #
-					#	brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,dx=dlambda_brho)
-					#	brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
-						brho1[ind_for_integral] = mui_2*2.0*_Integrate(brho_int_funct,dlambda_brho)
-						if z1[ind_for_integral] < 0:
-							brho1[ind_for_integral] = -brho1[ind_for_integral]
+					ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
+
+					beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho[ind_for_integral])
+					beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho[ind_for_integral] )
+					if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
+						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+										*np.sinh(self.d*self.lambda_int_brho[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_brho[zc]) \
+										/self.lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
+										*np.sinh(self.d*self.lambda_int_bz[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_bz[zc]) \
+										/self.lambda_int_bz[zc]
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+						if z[ind_for_integral] < 0:
+							Brho[ind_for_integral] = -Brho[ind_for_integral]
 					else:
-						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0*(np.sinh(z1[ind_for_integral]*lambda_int_brho)*np.exp(-d*lambda_int_brho))/lambda_int_brho#
-						bz_int_funct   = beselj_z_rho1_0  *beselj_z_r0_0  *(1.0 -np.cosh(z1[ind_for_integral]*lambda_int_bz  )*np.exp(-d*lambda_int_bz  ))/lambda_int_bz  #
-						#brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
-						#brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,dx=dlambda_brho)#
-						brho1[ind_for_integral] = mui_2*2.0*_Integrate(brho_int_funct,dlambda_brho)#
-					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
-					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,dx=dlambda_bz)
-					bz1[ind_for_integral]   = mui_2*2.0*_Integrate(bz_int_funct,dlambda_bz)
-					
+						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+										*(np.sinh(z[ind_for_integral]*self.lambda_int_brho[zc]) \
+										*np.exp(-self.d*self.lambda_int_brho[zc])) \
+										/self.lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
+										*(1.0 -np.cosh(z[ind_for_integral]*self.lambda_int_bz[zc]) \
+										*np.exp(-self.d*self.lambda_int_bz[zc])) \
+										/self.lambda_int_bz[zc]  
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+		
+		return Brho,Bz			
 	
 			
+		
+	def _Integral(self,x,y,z):
+		
+		rho_sq = x*x + y*y
+		rho = np.sqrt(rho_sq)
+		abs_z = np.abs(z)
+		
+		if np.size(x) == 1:
+			#scalar version of the code
+			Brho,Bz = self._IntegralScalar(x,y,z)
+		else:
+			#vectorized version
+			Brho,Bz = self._IntegralVector(x,y,z)
+		
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz		
+		
+		
+	def _Hybrid(self,x,y,z):
 
-	'''
-===========
- Analytic equations
-===========
-Connerney et al. 1981's equations for the field produced by a semi-infinite disk of thickness D, inner edge R0, outer edge R1 -
-Here we use the Edwards+ (2001) updated Connerney approximations for small rho (9a and 9b) and large rho (13a and 13b)
-RJW way
-Doing these 3 equations on the whole array to save getting confused by indices,  Will swap to just required indices later
-	'''
-	
-	if (n_ind_analytic != 0):
-		brho1[ind_analytic],bz1[ind_analytic] = _Analytic(rho1[ind_analytic],z1[ind_analytic],d,r0,mui_2,Edwards)
-	
-	'''
- =======
- New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
- =======
- bphi1 = 2.7975d*i_rho_value/rho1
- if abs(z1) lt d_value then bphi1 = bphi1*abs(z1)/d_value
- if z1 gt 0.d then bphi1 = (-1.d)*bphi1
-#% RJW way
-	'''
- 
-	bphi1 = 2.7975*i_rho/rho1
+		#a couple of other bits needed
+		rho_sq = x*x + y*y
+		rho = np.sqrt(rho_sq)
+		abs_z = np.abs(z)
 
-	ind = np.where(abs_z1 < d)[0]
-	sized = ind.size
-	if sized != 0:
-		bphi1[ind] =  bphi1[ind] * abs_z1[ind] / d
+		if np.size(x) == 1:
+			#do the scalar version
+			
+			#check if we need to integrate numerically, or use analytical equations
+			if (abs_z <= self.d*1.5) and (np.abs(rho - self.r0) <= 2.0):
+				#use integration
+				Brho,Bz = self._IntegralScalar(x,y,z)
+			else:
+				#analytical
+				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
 
-	ind = np.where(z1 > 0.0)[0]
-	sized = ind.size
-	if sized != 0:
-		bphi1[ind] =  -bphi1[ind] 
-	
-	'''
-=====================
-Account for finite nature of current sheet by subtracting the field values (using small rho approximation for a semi-infinite sheet)
-with a (inner edge) = r1 (= 51.4 Rj by default in CAN2020) following Edwards et al.
-Note that the Connerney et al. 1981 paper (and equations in the Dessler book) mentions a different approximation, which is simply
- subtracting 0.1*mu0i0/2 from Bz - and leaves Br unchanged (see Connerney et al. 1981 Figure 4).
-a1 = r1_value #outer edge
-f1 = sqrt((z1-d_value)^2.d +a1^2.d)
-f2 = sqrt((z1+d_value)^2.d +a1^2.d)
-brho_finite = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz_finite = mui_2*(2.d*d_value*(z1^2. +a1^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-brho1 = brho1 - brho_finite
-bphi_finite = (-1.d)*(brho_finite/mui_2)*i_rho_value
-bz1 = bz1 - bz_finite
+		else:
+			#this would be the vectorized version
+			n = np.size(x)
+			Brho = np.zeros(n,dtype='float64')
+			Bz = np.zeros(n,dtype='float64')
 
-RJW way
-a1 = r1_value #% outer edge
-a1_sq = a1*a1# % outer edge squared
-
-	'''
-	#### This bit is causing problems ####
-	# r1_sq = r1*r1
-	# z1md = z1-d
-	# z1pd = z1+d
-	# z1md_sq = z1md*z1md
-	# z1pd_sq = z1pd*z1pd
-	# f1 = np.sqrt(z1md_sq +r1_sq)
-	# f2 = np.sqrt(z1pd_sq +r1_sq)
-
-	# f3_a = (r1_sq +    z1md_sq)
-	# f3   = (r1_sq - 2*z1md_sq)/(f3_a*f3_a*np.sqrt(f3_a))
-	# f4_a = (r1_sq +    z1pd_sq)
-	# f4   = (r1_sq - 2*z1pd_sq)/(f4_a*f4_a*np.sqrt(f4_a))
-
-	# brho_finite = mui_2*((rho1/2)*((1/f1)-(1/f2)) + (rho1*rho1*rho1/16)*(f3-f4)) #; Edwards et al eq 9a
-	# bz_finite   = mui_2*(np.log((z1pd+f2)/(z1md+f1))   + (rho1*rho1/4)*(((z1pd)/(f2*f2*f2)) - ((z1md)/(f1*f1*f1)))) #; Edwards et al eq 9b
-	# brho1       = brho1 - brho_finite
-	# bphi_finite = -i_rho * brho_finite/mui_2
-	# bz1   = bz1 - bz_finite
+			doint = (abs_z <= self.d*1.5) & (np.abs(rho-self.r0) <= 2)
+			Iint = np.where(doint)[0]
+			Iana = np.where(doint == False)[0]
+			
+			if Iint.size > 0:
+				Brho[Iint],Bz[Iint] = self._IntegralVector(x[Iint],y[Iint],z[Iint])
+			
+			if Iana.size > 0:
+				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
 
 
-	#### This bit is the original bit of code: ####
-	# r1_sq = r1*r1
-	# z1md = z1-d
-	# z1pd = z1+d
-	# f1 = np.sqrt(z1md*z1md +r1_sq)
-	# f2 = np.sqrt(z1pd*z1pd +r1_sq)
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz		
+				
+		
+				
+	def Field(self,*args):
+		
+		#the inputs should be 3 scalars or arrays
+		if self.CartesianIn:
+			try:
+				x0,y0,z0 = args
+			except:
+				raise SystemError("Input arguments should be x,y,z or r,theta,phi")
+			#check inputs
+			if self.error_check:
+				self._CheckInputCart(x0,y0,z0)
+				
+			#rotate to current sheet coords	
+			x,y,z,costheta,sintheta,cosphi,sinphi = self._ConvInputCart(x0,y0,z0)
+		else:
+			try:
+				r0,t0,p0 = args
+			except:
+				raise SystemError("Input arguments should be x,y,z or r,theta,phi")				
 
-	# brho_finite = mui_2*(rho1/2)*((1/f1)-(1/f2))
-	# bz_finite   = mui_2*(2*d*(1/np.sqrt(z1*z1+r1_sq)) - ((rho1*rho1)/4)*((z1md/(f1*f1*f1)) - (z1pd/(f2*f2*f2))))
-	# brho1       = brho1 - brho_finite
-	# bphi_finite = -i_rho * brho_finite/mui_2#
-	# bz1         = bz1 - bz_finite#
-	
-	#set Edwards=False for now, until we know what's wrong!
-	brho_finite,bz_finite = _Finite(rho1,z1,d,r1,mui_2,Edwards=Edwards)
-	bphi_finite = -i_rho*brho_finite/mui_2
-	brho1 -= brho_finite
-	bz1 -= bz_finite
+			#check inputs
+			if self.error_check:
+				self._CheckInputPol(r0,t0,p0)
+			
+			#rotate to current sheet coords	
+			x,y,z,costheta,sintheta,cosphi,sinphi = self._ConvInputPol(r0,t0,p0)	
+			
+		#create the output arrays
+		n = np.size(x)
+		Bout = np.zeros((n,3),dtype='float64')
+		
+		Brho = np.zeros(n,dtype='float64')
+		Bphi = np.zeros(n,dtype='float64')
+		Bz = np.zeros(n,dtype='float64')
+		
 
-	'''
-brho1, bphi1, and bz1 here are the ultimately calculated brho and bz values from the CAN model
-the remaining calculations just rotate the field back into SIII
-Calculate 'magnetic longitude' and convert the field into cartesian coordinates
-phi1     = atan(y1,x1)#
-cos_phi1 = cos(phi1)#
-sin_phi1 = sin(phi1)#
-The above three commands is really a cos(atan(y1,x1)) and a sin(atan(y1,x1)).  This simplifies
-	'''
+		
+		
+		#call the model function
+		Brho,Bphi,Bz = self._ModelFunc(x,y,z)
+		
+		
+		#return to SIII coordinates
+		if self.CartesianOut:
+			B0,B1,B2 = self._ConvOutputCart(x,y,Brho,Bphi,Bz)
+		else:
+			B0,B1,B2 = self._ConvOutputPol(costheta,sintheta,cosphi,sinphi,
+											x,y,Brho,Bphi,Bz)
+		
+		#turn into a nx3 array
+		Bout[:,0] = B0
+		Bout[:,1] = B1
+		Bout[:,2] = B2
 
-	cos_phi1 = x1/rho1 #% cos(atan(y1,x1)) see https://www.wolframalpha.com/input/?i=cos%28atan2%28y%2Cx%29%29
-	sin_phi1 = y1/rho1 #% sin(atan(y1,x1)) see https://www.wolframalpha.com/input/?i=sin%28atan2%28y%2Cx%29%29
-	
-	bx1 = brho1*cos_phi1 - bphi1*sin_phi1 # % lines above were used for CAN1981, but since Bphi != 0 in CAN 2020 this is updated here
-	by1 = brho1*sin_phi1 + bphi1*cos_phi1 #
-
-	'''
-Rotate back by dipole tilt amount, into coordinate system that is aligned with Jupiter's spin axis
-bx = bx1*cos(theta_cs) - bz1*sin(theta_cs)
-by = by1
-bz = bx1*sin(theta_cs) + bz1*cos(theta_cs)
-RJW way
-	'''
-
-	cos_theta_cs = np.cos(theta_cs)#
-	sin_theta_cs =  np.sin(theta_cs)#
-	bx = bx1*cos_theta_cs - bz1*sin_theta_cs#
-	bz = bx1*sin_theta_cs + bz1*cos_theta_cs#
-
-
-#% Finally, shift back to SIII longitude
-
-	cos_xp = np.cos(dipole_shift) #% cos(xp_value*Deg2Rad)#
-	sin_xp = np.sin(dipole_shift) #% sin(xp_value*Deg2Rad)#
-	bx2 = bx*cos_xp - by1*sin_xp# % used sin(-a) = asin(a) & cos(-a) = cos(a)
-	by2 = by1*cos_xp + bx*sin_xp#
-
-	'''
-return, [[bx2],[by2],[bz]]#% Exit here if we want output in Cartesian, not Spherical
-Convert to spherical coordinates
-bx = bx2#
-by = by2#
-br =  bx*sin_theta*cos_phi+by*sin_theta*sin_phi+bz*cos_theta#
-bt =  bx*cos_theta*cos_phi+by*cos_theta*sin_phi-bz*sin_theta#
-bp = -bx*          sin_phi+by*          cos_phi#
-	'''
-
-	if Cartesian:
-		return bx2,by2,bz
-
-	br =  bx2*sin_theta*cos_phi+by2*sin_theta*sin_phi+bz*cos_theta#
-	bt =  bx2*cos_theta*cos_phi+by2*cos_theta*sin_phi-bz*sin_theta#
-	bp = -bx2*          sin_phi+by2*          cos_phi#
-
-	return br,bt,bp
+		return Bout
