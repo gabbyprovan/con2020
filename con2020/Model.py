@@ -320,12 +320,41 @@ class Model(object):
 		
 	
 	def _ConvInputPol(self,r,theta,phi):
+		'''
+		Converts input coordinates from spherical polar right-handed 
+		System III to Cartesian current sheet coordinates.
 		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
 	
-		sin_theta = np.sin(theta)#
-		cos_theta = np.cos(theta)#
-		sin_phi   = np.sin(phi)#
-		cos_phi   = np.cos(phi)#
+		sint = np.sin(theta)
+		cost = np.cos(theta)
+		sinp   = np.sin(phi)
+		cosp   = np.cos(phi)
 
 		x = r*sin_theta*np.cos(phi-self.dipole_shift)
 		y = r*sin_theta*np.sin(phi-self.dipole_shift)
@@ -336,12 +365,50 @@ class Model(object):
 		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)#		
 		
 		
-		return x1,y1,z1,cos_theta,sin_theta,cos_phi,sin_phi
+		return x1,y1,z1,cost,sint,cosp,sinp
 
 
-	def _ConvOutputPol(self,costheta,sintheta,cosphi,sinphi,
-						x1,y1,Brho1,Bphi1,Bz1):
+	def _ConvOutputPol(self,cost,sint,cosp,sinp,x1,y1,Brho1,Bphi1,Bz1):
+		'''
+		Convert the output magnetic field from cylindrical current 
+		sheet coordinates to spherical polar right-handed System III
+		coordinates.
 		
+		Inputs
+		======
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		x1 : float
+			x-position in current sheet coords (Rj).
+		y1 : float
+			y-position in current sheet coords (Rj).
+		Brho1 : float	
+			Rho component of magnetic field (nT).
+		Bphi1 : float
+			Phi (azimuthal) component of the magnetic field (nT).
+		Bz1 : float
+			z component of the magnetic field (nT).
+			
+		Returns
+		=======
+		Br : float
+			Radial component of magnetic field in right-handed System 
+			III coordinates (nT).
+		Bt : float
+			Meridional component of magnetic field in right-handed 
+			System III coordinates (nT).
+		Bp : float
+			Azimuthal component of magnetic field in right-handed System 
+			III coordinates (nT).
+			
+		
+		'''		
 		rho = np.sqrt(x1*x1 + y1*y1)
 		cosphi1 = x1/rho
 		sinphi1 = y1/rho
@@ -359,15 +426,15 @@ class Model(object):
 		Bx2 = Bx*cos_xp - By1*sin_xp
 		By2 = By1*cos_xp + Bx*sin_xp	
 
-		Br =  Bx2*sintheta*cosphi+By2*sintheta*sinphi+Bz*costheta#
-		Bt =  Bx2*costheta*cosphi+By2*costheta*sinphi-Bz*sintheta#
-		Bp = -Bx2*         sinphi+By2*         cosphi#
+		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost#
+		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint#
+		Bp = -Bx2*     sinp+By2*     cosp#
 	
 		return Br,Bt,Bp
 
 		
 	def _CheckInputCart(self,x,y,z):
-
+		
 		if (np.size(x) != np.size(y)) or (np.size(x) != np.size(z)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 		
