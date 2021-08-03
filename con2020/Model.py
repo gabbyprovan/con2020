@@ -212,7 +212,36 @@ class Model(object):
 			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
 	
 	def _ConvInputCart(self,x0,y0,z0):
+		'''
+		Converts input coordinates from Cartesian right-handed System 
+		III to current sheet coordinates.
 		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''
 		#this bit needs rewriting/simplifying
 	
 		#convert to spherical polar coords
@@ -220,24 +249,56 @@ class Model(object):
 		theta = np.arccos(z0/r)
 		phi = (np.arctan2(y0,x0) + (2*np.pi)) % (2*np.pi)		
 		
-		sin_theta = np.sin(theta)#
-		cos_theta = np.cos(theta)#
-		sin_phi   = np.sin(phi)#
-		cos_phi   = np.cos(phi)#
+		#These will be needed later on, but will also be simplified
+		sint = np.sin(theta)
+		cost = np.cos(theta)
+		sinp = np.sin(phi)
+		cosp = np.cos(phi)
 
 		x = r*sin_theta*np.cos(phi-self.dipole_shift)
 		y = r*sin_theta*np.sin(phi-self.dipole_shift)
 		z = r*cos_theta
 		
-		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)#
-		y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
-		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)#		
+		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)
+		y1 = y
+		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)		
 		
 		
-		return x1,y1,z1,cos_theta,sin_theta,cos_phi,sin_phi
+		return x1,y1,z1,cost,sint,cosp,sinp
 		
 	def _ConvOutputCart(self,x1,y1,Brho1,Bphi1,Bz1):
+		'''
+		Convert the output magnetic field from cylindrical current 
+		sheet coordinates to Cartesian right-handed System III
+		coordinates.
 		
+		Inputs
+		======
+		x1 : float
+			x-position in current sheet coords (Rj).
+		y1 : float
+			y-position in current sheet coords (Rj).
+		Brho1 : float	
+			Rho component of magnetic field (nT).
+		Bphi1 : float
+			Phi (azimuthal) component of the magnetic field (nT).
+		Bz1 : float
+			z component of the magnetic field (nT).
+			
+		Returns
+		=======
+		Bx0 : float
+			x-component of magnetic field in right-handed System III
+			coordinates (nT).
+		By0 : float
+			y-component of magnetic field in right-handed System III
+			coordinates (nT).
+		Bz0 : float
+			z-component of magnetic field in right-handed System III
+			coordinates (nT).
+			
+		
+		'''
 		rho = np.sqrt(x1*x1 + y1*y1)
 		cosphi1 = x1/rho
 		sinphi1 = y1/rho
@@ -248,14 +309,14 @@ class Model(object):
 		costheta_cs = np.cos(self.theta_cs)
 		sintheta_cs = np.sin(self.theta_cs)
 		Bx = Bx1*costheta_cs - Bz1*sintheta_cs
-		Bz = Bx1*sintheta_cs + Bz1*costheta_cs		
+		Bz0 = Bx1*sintheta_cs + Bz1*costheta_cs		
 	
 		cos_xp = np.cos(self.dipole_shift)
 		sin_xp = np.sin(self.dipole_shift)
-		Bx2 = Bx*cos_xp - By1*sin_xp
-		By2 = By1*cos_xp + Bx*sin_xp	
+		Bx0 = Bx*cos_xp - By1*sin_xp
+		By0 = By1*cos_xp + Bx*sin_xp	
 	
-		return Bx2,By2,Bz
+		return Bx0,By0,Bz0
 		
 	
 	def _ConvInputPol(self,r,theta,phi):
