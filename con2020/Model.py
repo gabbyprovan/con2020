@@ -317,7 +317,8 @@ class Model(object):
 
 		#rotate about y axis to align with current sheet
 		x1 = x*self.cosxt + z0*self.sinxt
-		z1 = z0*self.cosxt - x*self.sinxt		
+		z1 = z0*self.cosxt - x*self.sinxt	
+
 			
 		return x1,y1,z1,cost,sint,cosp,sinp
 		
