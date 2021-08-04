@@ -305,16 +305,12 @@ class Model(object):
 		
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
-		
-		costheta_cs = np.cos(self.theta_cs)
-		sintheta_cs = np.sin(self.theta_cs)
-		Bx = Bx1*costheta_cs - Bz1*sintheta_cs
-		Bz0 = Bx1*sintheta_cs + Bz1*costheta_cs		
-	
-		cos_xp = np.cos(self.dipole_shift)
-		sin_xp = np.sin(self.dipole_shift)
-		Bx0 = Bx*cos_xp - By1*sin_xp
-		By0 = By1*cos_xp + Bx*sin_xp	
+
+		Bx = Bx1*self.cosxt - Bz1*self.sinxt
+		Bz0 = Bx1*self.sinxt + Bz1*self.cosxt		
+
+		Bx0 = Bx*self.cosxp - By1*self.sinxp
+		By0 = By1*self.cosxp + Bx*self.sinxp	
 	
 		return Bx0,By0,Bz0
 		
