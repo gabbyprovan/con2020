@@ -476,8 +476,8 @@ class Model(object):
 		if np.min(theta) < 0 or np.max(theta) > np.pi:
 			raise SystemExit ('ERROR: CoLat must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?). Returning...')
 
-		if np.min(phi)  < 0 or np.max(phi) > 2*np.pi:
-			raise SystemExit ('ERROR: Long must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
+		if np.min(phi)  < -2*np.pi or np.max(phi) > 2*np.pi:
+			raise SystemExit ('ERROR: Long must be in radians of -2pi to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
 			
 		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
