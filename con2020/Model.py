@@ -434,7 +434,21 @@ class Model(object):
 
 		
 	def _CheckInputCart(self,x,y,z):
+		'''
+		Check the Cartesian inputs - if the checks fail then the
+		function raises an error.
+
 		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		'''
 		if (np.size(x) != np.size(y)) or (np.size(x) != np.size(z)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 		
@@ -446,7 +460,21 @@ class Model(object):
 
 
 	def _CheckInputPol(self,r,theta,phi):
+		'''
+		Check the spherical polar inputs - if the checks fail then the
+		function raises an error.
 
+		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		'''
 		if np.min(r) <= 0 or np.max(r) >= 200:
 			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
@@ -460,7 +488,25 @@ class Model(object):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
 	def _Bphi(self,rho,abs_z,z):
-		
+		'''
+		New to CAN2020 (not included in CAN1981): radial current 
+		produces an azimuthal field, so Bphi is nonzero
+
+		Inputs
+		======
+		rho : float
+			distance in the x-z plane of the current sheet in Rj.
+		abs_z : float
+			absolute value of the z-coordinate
+		z : float
+			signed version of the z-coordinate
+			
+		Returns
+		=======
+		Bphi : float
+			Azimuthal component of the magnetic field.
+
+		'''
 		Bphi = 2.7975*self.i_rho/rho
 		
 		if np.size(rho) == 1:
@@ -479,7 +525,44 @@ class Model(object):
 		return Bphi
 		
 	def _Analytic(self,x,y,z):
-	
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		using analytical equations either from Connerney et al 1981 or
+		the divergence-free equations from Edwards et al 2001 (defualt).
+		
+		The equations used are predefined on creation of the object
+		using the "Edwards" keyword (default=True).
+		
+		If Edwards == True:
+			Using equations 9a and 9b for the small rho approximation
+			and 13a and 13b for the large rho approximation of Edwards
+			et al.
+		
+		If Edwards == False:
+			Use equations A1-A4 of Connerney et al 1981 for the large 
+			rho approximation and A7 and A8 for the small rho 
+			approximation.
+			
+		Inputs
+		======
+		x : float
+			x coordinate
+		y : float
+			y coordinate
+		z : float
+			z coordinate
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''
+		
 		#a couple of other bits needed
 		rho_sq = x*x + y*y
 		rho = np.sqrt(rho_sq)
@@ -502,7 +585,27 @@ class Model(object):
 		
 		
 	def _IntegralScalar(self,x,y,z):
+		'''
+		Integrates the model equations for an single set of input 
+		coordinates.
 		
+		Inputs
+		======
+		x : float
+			x coordinate
+		y : float
+			y coordinate
+		z : float
+			z coordinate
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''				
 		#a couple of other bits needed
 		rho_sq = x*x + y*y
 		rho = np.sqrt(rho_sq)
@@ -557,7 +660,27 @@ class Model(object):
 
 
 	def _IntegralVector(self,x,y,z):
+		'''
+		Integrates the model equations for an array of input coordinates.
 		
+		Inputs
+		======
+		x : float
+			x coordinate
+		y : float
+			y coordinate
+		z : float
+			z coordinate
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
+				
 		#a couple of other bits needed
 		rho_sq = x*x + y*y
 		rho = np.sqrt(rho_sq)
@@ -614,7 +737,30 @@ class Model(object):
 			
 		
 	def _Integral(self,x,y,z):
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		by integrating equations 14, 15, 17 and 18 of Connerney et al
+		1981.
 		
+		Inputs
+		======
+		x : float
+			x coordinate
+		y : float
+			y coordinate
+		z : float
+			z coordinate
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
 		rho_sq = x*x + y*y
 		rho = np.sqrt(rho_sq)
 		abs_z = np.abs(z)
@@ -640,7 +786,30 @@ class Model(object):
 		
 		
 	def _Hybrid(self,x,y,z):
-
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		by using a combination of analytical equations and numerical
+		integration.
+		
+		Inputs
+		======
+		x : float
+			x coordinate
+		y : float
+			y coordinate
+		z : float
+			z coordinate
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
 		#a couple of other bits needed
 		rho_sq = x*x + y*y
 		rho = np.sqrt(rho_sq)
@@ -689,6 +858,41 @@ class Model(object):
 		
 				
 	def Field(self,*args):
+		'''
+		Return the magnetic field vector(s) for a given input position
+		in right-handed System III coordinates.
+		
+		Input Arguments
+		===============
+		The function should be called using three arguments, either
+		scalars or vectors (not a mixture):
+		
+		args[0] : float
+			First input coordinate(s) - x or r (in Rj).
+		args[1] : float
+			Second input coordinate(s) - y (in Rj) or theta (in rad).
+		args[2] : float
+			Third input coordinate(s) - z (in Rj) or phi (in rad).
+			
+		Whether or not the input coordinates are treated as Cartesian or
+		spherical polar depends upon how the model was initialized with
+		the "CartesianIn" keyword.
+		
+		e.g.:
+		# for Cartesian input coordinates:
+		B = Model.Field(x,y,z)
+		
+		#or spherical polar coordinates:
+		B = Model.Field(r,theta,phi)
+		
+		Returns
+		=======
+		B : float
+			(n,3) shaped array containing the magnetic field vectors in
+			either Cartesian SIII coordinates or spherical polar ones,
+			depending upon how the model was initialized, where "n" is
+			the number of elements contained in the input arguments.
+		'''
 		
 		#the inputs should be 3 scalars or arrays
 		if self.CartesianIn:
