@@ -255,6 +255,10 @@ class Model(object):
 			y current sheet coordinate
 		z1 : float
 			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
 		cost : float
 			cos(theta) - where theta is the colatitude
 		sint : float
@@ -292,6 +296,10 @@ class Model(object):
 			y current sheet coordinate
 		z1 : float
 			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
 		cost : float
 			cos(theta) - where theta is the colatitude
 		sint : float
@@ -302,9 +310,9 @@ class Model(object):
 			sin(phi)
 		'''
 
-		rho2 = x0*x0 + y0*y0
-		rho0 = np.sqrt(rho2)
-		r = np.sqrt(rho2 + z0**2)
+		rho0_sq = x0*x0 + y0*y0
+		rho0 = np.sqrt(rho0_sq)
+		r = np.sqrt(rho0_sq + z0**2)
 
 		cost = z0/r
 		sint = rho0/r
@@ -319,10 +327,13 @@ class Model(object):
 		x1 = x*self.cosxt + z0*self.sinxt
 		z1 = z0*self.cosxt - x*self.sinxt	
 
+		#some other bits we need for the model
+		rho1 = np.sqrt(x1*x1 + y1*y1)
+		abs_z1 = np.abs(z1)
 			
-		return x1,y1,z1,cost,sint,cosp,sinp
+		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
 		
-	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,Brho1,Bphi1,Bz1):
+	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
 		'''
 		Convert the output magnetic field from cylindrical current 
 		sheet coordinates to Cartesian right-handed System III
@@ -342,6 +353,8 @@ class Model(object):
 			x-position in current sheet coords (Rj).
 		y1 : float
 			y-position in current sheet coords (Rj).
+		rho1 : float
+			distance from z-axis (Rj).
 		Brho1 : float	
 			Rho component of magnetic field (nT).
 		Bphi1 : float
@@ -363,9 +376,8 @@ class Model(object):
 			
 		
 		'''
-		rho = np.sqrt(x1*x1 + y1*y1)
-		cosphi1 = x1/rho
-		sinphi1 = y1/rho
+		cosphi1 = x1/rho1
+		sinphi1 = y1/rho1
 		
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
@@ -402,6 +414,10 @@ class Model(object):
 			y current sheet coordinate
 		z1 : float
 			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
 		cost : float
 			cos(theta) - where theta is the colatitude
 		sint : float
@@ -439,6 +455,10 @@ class Model(object):
 			y current sheet coordinate
 		z1 : float
 			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
 		cost : float
 			cos(theta) - where theta is the colatitude
 		sint : float
@@ -462,12 +482,16 @@ class Model(object):
 		
 		x1 = x*self.cosxt + z*self.sinxt
 		z1 = z*self.cosxt - x*self.sinxt	
+	
+		#some other bits we need for the model
+		rho1 = np.sqrt(x1*x1 + y1*y1)
+		abs_z1 = np.abs(z1)
+			
+		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp	
 		
-		
-		return x1,y1,z1,cost,sint,cosp,sinp
 
 
-	def _ConvOutputPol(self,cost,sint,cosp,sinp,x1,y1,Brho1,Bphi1,Bz1):
+	def _ConvOutputPol(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
 		'''
 		Convert the output magnetic field from cylindrical current 
 		sheet coordinates to spherical polar right-handed System III
@@ -487,6 +511,8 @@ class Model(object):
 			x-position in current sheet coords (Rj).
 		y1 : float
 			y-position in current sheet coords (Rj).
+		rho1 : float
+			distance from z-axis (Rj).
 		Brho1 : float	
 			Rho component of magnetic field (nT).
 		Bphi1 : float
@@ -510,9 +536,8 @@ class Model(object):
 		'''		
 		
 		#this now runs in about 60% of the time it used to
-		rho = np.sqrt(x1*x1 + y1*y1)
-		cosphi1 = x1/rho
-		sinphi1 = y1/rho
+		cosphi1 = x1/rho1
+		sinphi1 = y1/rho1
 		
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
@@ -621,7 +646,7 @@ class Model(object):
 		
 		return Bphi
 		
-	def _Analytic(self,x,y,z):
+	def _Analytic(self,rho,abs_z,z):
 		'''		
 		Calculate the magnetic field associated with the current sheet
 		using analytical equations either from Connerney et al 1981 or
@@ -642,12 +667,12 @@ class Model(object):
 			
 		Inputs
 		======
-		x : float
-			x coordinate
-		y : float
-			y coordinate
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
 		z : float
-			z coordinate
+			z coordinate (Rj)
 		
 		Returns
 		=======
@@ -659,11 +684,6 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''
-		
-		#a couple of other bits needed
-		rho_sq = x*x + y*y
-		rho = np.sqrt(rho_sq)
-		abs_z = np.abs(z)
 		
 		#calculate the analytic solution first for Brho and Bz
 		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
@@ -681,19 +701,19 @@ class Model(object):
 		return Brho,Bphi,Bz
 		
 		
-	def _IntegralScalar(self,x,y,z):
+	def _IntegralScalar(self,rho,abs_z,z):
 		'''
 		Integrates the model equations for an single set of input 
 		coordinates.
 		
 		Inputs
 		======
-		x : float
-			x coordinate
-		y : float
-			y coordinate
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
 		z : float
-			z coordinate
+			z coordinate (Rj)
 		
 		Returns
 		=======
@@ -703,11 +723,7 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''				
-		#a couple of other bits needed
-		rho_sq = x*x + y*y
-		rho = np.sqrt(rho_sq)
-		abs_z = np.abs(z)
-		
+
 		#check which "zcase" we need for this vector
 		check1 = np.abs(abs_z - self.d)		
 		check2 = abs_z <= self.d*1.1
@@ -752,23 +768,23 @@ class Model(object):
 							/self.lambda_int_bz[zc]
 			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)#
 		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
-		
+
 		return Brho,Bz
 
 
-	def _IntegralVector(self,x,y,z):
+	def _IntegralVector(self,rho,abs_z,z):
 		'''
 		Integrates the model equations for an array of input coordinates.
 		
 		Inputs
 		======
-		x : float
-			x coordinate
-		y : float
-			y coordinate
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
 		z : float
-			z coordinate
-		
+			z coordinate (Rj)
+			
 		Returns
 		=======
 		Brho : float
@@ -777,11 +793,6 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''		
-				
-		#a couple of other bits needed
-		rho_sq = x*x + y*y
-		rho = np.sqrt(rho_sq)
-		abs_z = np.abs(z)
 		
 		#check which "zcase" we need for this vector
 		check1 = np.abs(abs_z - self.d)		
@@ -789,8 +800,8 @@ class Model(object):
 		s = _Switcher(check1,check2)
 
 		#create the output arrays for this function
-		Brho = np.zeros(np.size(x),dtype='float64')
-		Bz = np.zeros(np.size(x),dtype='float64')
+		Brho = np.zeros(np.size(rho),dtype='float64')
+		Bz = np.zeros(np.size(rho),dtype='float64')
 
 		for zcase in range(1,7):
 			
@@ -833,7 +844,7 @@ class Model(object):
 	
 			
 		
-	def _Integral(self,x,y,z):
+	def _Integral(self,rho,abs_z,z):
 		'''		
 		Calculate the magnetic field associated with the current sheet
 		by integrating equations 14, 15, 17 and 18 of Connerney et al
@@ -841,12 +852,12 @@ class Model(object):
 		
 		Inputs
 		======
-		x : float
-			x coordinate
-		y : float
-			y coordinate
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
 		z : float
-			z coordinate
+			z coordinate (Rj)
 		
 		Returns
 		=======
@@ -858,16 +869,13 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''		
-		rho_sq = x*x + y*y
-		rho = np.sqrt(rho_sq)
-		abs_z = np.abs(z)
-		
-		if np.size(x) == 1:
+
+		if np.size(rho) == 1:
 			#scalar version of the code
-			Brho,Bz = self._IntegralScalar(x,y,z)
+			Brho,Bz = self._IntegralScalar(rho,abs_z,z)
 		else:
 			#vectorized version
-			Brho,Bz = self._IntegralVector(x,y,z)
+			Brho,Bz = self._IntegralVector(rho,abs_z,z)
 		
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
@@ -882,7 +890,7 @@ class Model(object):
 		return Brho,Bphi,Bz		
 		
 		
-	def _Hybrid(self,x,y,z):
+	def _Hybrid(self,rho,abs_z,z):
 		'''		
 		Calculate the magnetic field associated with the current sheet
 		by using a combination of analytical equations and numerical
@@ -890,12 +898,12 @@ class Model(object):
 		
 		Inputs
 		======
-		x : float
-			x coordinate
-		y : float
-			y coordinate
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
 		z : float
-			z coordinate
+			z coordinate (Rj)
 		
 		Returns
 		=======
@@ -907,25 +915,22 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''		
-		#a couple of other bits needed
-		rho_sq = x*x + y*y
-		rho = np.sqrt(rho_sq)
-		abs_z = np.abs(z)
 
-		if np.size(x) == 1:
+
+		if np.size(rho) == 1:
 			#do the scalar version
 			
 			#check if we need to integrate numerically, or use analytical equations
 			if (abs_z <= self.d*1.5) and (np.abs(rho - self.r0) <= 2.0):
 				#use integration
-				Brho,Bz = self._IntegralScalar(x,y,z)
+				Brho,Bz = self._IntegralScalar(rho,abs_z,z)
 			else:
 				#analytical
 				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
 
 		else:
 			#this would be the vectorized version
-			n = np.size(x)
+			n = np.size(rho)
 			Brho = np.zeros(n,dtype='float64')
 			Bz = np.zeros(n,dtype='float64')
 
@@ -934,7 +939,7 @@ class Model(object):
 			Iana = np.where(doint == False)[0]
 			
 			if Iint.size > 0:
-				Brho[Iint],Bz[Iint] = self._IntegralVector(x[Iint],y[Iint],z[Iint])
+				Brho[Iint],Bz[Iint] = self._IntegralVector(rho[Iint],abs_z[Iint],z[Iint])
 			
 			if Iana.size > 0:
 				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
@@ -989,22 +994,22 @@ class Model(object):
 		'''
 		
 		#rotate and check input SIII coordinates to current sheet coords
-		x,y,z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
+		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
 			
 		#create the output arrays
-		n = np.size(x)
+		n = np.size(rho)
 		Bout = np.zeros((n,3),dtype='float64')
 		
-		Brho = np.zeros(n,dtype='float64')
-		Bphi = np.zeros(n,dtype='float64')
-		Bz = np.zeros(n,dtype='float64')
+		#Brho = np.zeros(n,dtype='float64')
+		#Bphi = np.zeros(n,dtype='float64')
+		#Bz = np.zeros(n,dtype='float64')
 			
 		#call the model function
-		Brho,Bphi,Bz = self._ModelFunc(x,y,z)
+		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
 		
 		
 		#return to SIII coordinates
-		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,Brho,Bphi,Bz)
+		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
 		
 		#turn into a nx3 array
 		Bout[:,0] = B0

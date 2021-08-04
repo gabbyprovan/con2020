@@ -297,7 +297,7 @@ endelse
 					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
 					#bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,dx=dlambda_bz)
 					bz1[ind_for_integral]   = mui_2*2.0*_Integrate(bz_int_funct,dlambda_bz)
-					
+
 	
 			
 
