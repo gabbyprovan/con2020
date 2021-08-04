@@ -424,3 +424,65 @@ def Dump(n = 5):
 	
 	#dump it to a file in the home directory
 	pf.WriteASCIIData('con2020dump.dat',out)
+
+
+def TestBessel(rho,z):
+	from scipy.special import j0,j1
+	
+	abs_z = np.abs(z)
+	
+	m = Model()
+
+
+	#check which "zcase" we need for this vector
+	check1 = np.abs(abs_z - m.d)		
+	check2 = abs_z <= m.d*1.1
+		
+	if check1 >= 0.7:
+		#case 1 or 2
+		zc = 1
+	elif (check1 < 0.7) and (check1 >= 0.1):
+		#case 3 or 4
+		zc = 3
+	else:
+		#case 5 or 6
+		zc = 5
+	#this bit does two things - it both takes into account the
+	#check2 thing and it makes zc an index in range 0 to 5 as 
+	#opposed to the zcase 1 to 6, so zi = zcase -1
+	zc -= np.int(check2)
+	
+	#do the integration
+	beselj_rho_rho1_1 = j1(m.lambda_int_brho[zc]*rho)
+	beselj_z_rho1_0   = j0(m.lambda_int_bz[zc]*rho)
+	if (abs_z > m.d): #% Connerney et al. 1981 eqs. 14 and 15
+		brho_int_funct = beselj_rho_rho1_1*m.beselj_rho_r0_0[zc] \
+						*np.sinh(m.d*m.lambda_int_brho[zc]) \
+						*np.exp(-abs_z*m.lambda_int_brho[zc]) \
+						/m.lambda_int_brho[zc]
+		bz_int_funct   = beselj_z_rho1_0 *m.beselj_z_r0_0[zc] \
+						*np.sinh(m.d*m.lambda_int_bz[zc]) \
+						*np.exp(-abs_z*m.lambda_int_bz[zc]) \
+						/m.lambda_int_bz[zc]  
+		#Brho = m.mu_i*2.0*_Integrate(brho_int_funct,m.dlambda_brho)
+		#if z < 0:
+		#	Brho = -Brho
+	else:
+		brho_int_funct = beselj_rho_rho1_1*m.beselj_rho_r0_0[zc] \
+						*(np.sinh(z*m.lambda_int_brho[zc]) \
+						*np.exp(-m.d*m.lambda_int_brho[zc])) \
+						/m.lambda_int_brho[zc]
+		bz_int_funct   = beselj_z_rho1_0  *m.beselj_z_r0_0[zc] \
+						*(1.0 -np.cosh(z*m.lambda_int_bz[zc]) \
+						*np.exp(-m.d*m.lambda_int_bz[zc])) \
+						/m.lambda_int_bz[zc]
+		#Brho = m.mu_i*2.0*_Integrate(brho_int_funct,m.dlambda_brho)#
+	#Bz = m.mu_i*2.0*_Integrate(bz_int_funct,m.dlambda_bz)	
+	
+	
+	plt.figure(figsize=(11,8))
+	ax = plt.subplot2grid((1,1),(0,0))
+	
+	ax.plot(m.lambda_int_brho[zc],brho_int_funct,label=r'$\rho$')
+	ax.plot(m.lambda_int_bz[zc],bz_int_funct,label=r'$z$')
+	ax.legend()
