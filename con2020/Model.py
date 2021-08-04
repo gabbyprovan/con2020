@@ -182,6 +182,24 @@ class Model(object):
 			self._ModelFunc = self._Integral
 		else:
 			self._ModelFunc = self._Hybrid
+			
+		#set the coordinate conversion functions for input
+		if self.CartesianIn:
+			if self.error_check:
+				self._InputConv = self._ConvInputCartSafe
+			else:
+				self._InputConv = self._ConvInputCart
+		else:
+			if self.error_check:
+				self._InputConv = self._ConvInputPolSafe
+			else:
+				self._InputConv = self._ConvInputPol	
+				
+		#set the output functions
+		if self.CartesianOut:
+			self._OutputConv = self._ConvOutputCart
+		else:
+			self._OutputConv = self._ConvOutputPol		
 				
 		#some constants
 		self.Deg2Rad = np.pi/180.0
@@ -214,6 +232,43 @@ class Model(object):
 			#save the Bessel functions
 			self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
 			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
+	
+	def _ConvInputCartSafe(self,x0,y0,z0):
+		'''
+		Converts input coordinates from Cartesian right-handed System 
+		III to current sheet coordinates - with error checking.
+		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
+		#check input
+		self._CheckInputCart(x0,y0,z0)
+		
+		#now convert it
+		return self._ConvInputCart(x0,y0,z0)
 	
 	def _ConvInputCart(self,x0,y0,z0):
 		'''
@@ -266,7 +321,7 @@ class Model(object):
 			
 		return x1,y1,z1,cost,sint,cosp,sinp
 		
-	def _ConvOutputCart(self,x1,y1,Brho1,Bphi1,Bz1):
+	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,Brho1,Bphi1,Bz1):
 		'''
 		Convert the output magnetic field from cylindrical current 
 		sheet coordinates to Cartesian right-handed System III
@@ -274,6 +329,14 @@ class Model(object):
 		
 		Inputs
 		======
+		cost : float (dummy)
+			cos(theta) - where theta is the colatitude
+		sint : float (dummy)
+			sin(theta)
+		cosp : float (dummy)
+			cos(phi) - where phi is east longitude
+		sinp : float (dummy)	
+			sin(phi)
 		x1 : float
 			x-position in current sheet coords (Rj).
 		y1 : float
@@ -315,6 +378,44 @@ class Model(object):
 		return Bx0,By0,Bz0
 		
 	
+	def _ConvInputPolSafe(self,r,theta,phi):
+		'''
+		Converts input coordinates from spherical polar right-handed 
+		System III to Cartesian current sheet coordinates - with error
+		checks.
+		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
+		#check the input coordinates
+		self._CheckInputPol(r,theta,phi)
+		
+		#now convert coordinates
+		return self._ConvInputPol(r,theta,phi)
+		
 	def _ConvInputPol(self,r,theta,phi):
 		'''
 		Converts input coordinates from spherical polar right-handed 
@@ -852,21 +953,18 @@ class Model(object):
 				
 		
 				
-	def Field(self,*args):
+	def Field(self,in0,in1,in2):
 		'''
 		Return the magnetic field vector(s) for a given input position
 		in right-handed System III coordinates.
 		
-		Input Arguments
-		===============
-		The function should be called using three arguments, either
-		scalars or vectors (not a mixture):
-		
-		args[0] : float
+		Inputs
+		======
+		in0 : float
 			First input coordinate(s) - x or r (in Rj).
-		args[1] : float
+		in1 : float
 			Second input coordinate(s) - y (in Rj) or theta (in rad).
-		args[2] : float
+		in2 : float
 			Third input coordinate(s) - z (in Rj) or phi (in rad).
 			
 		Whether or not the input coordinates are treated as Cartesian or
@@ -889,30 +987,8 @@ class Model(object):
 			the number of elements contained in the input arguments.
 		'''
 		
-		#the inputs should be 3 scalars or arrays
-		if self.CartesianIn:
-			try:
-				x0,y0,z0 = args
-			except:
-				raise SystemError("Input arguments should be x,y,z or r,theta,phi")
-			#check inputs
-			if self.error_check:
-				self._CheckInputCart(x0,y0,z0)
-				
-			#rotate to current sheet coords	
-			x,y,z,costheta,sintheta,cosphi,sinphi = self._ConvInputCart(x0,y0,z0)
-		else:
-			try:
-				r0,t0,p0 = args
-			except:
-				raise SystemError("Input arguments should be x,y,z or r,theta,phi")				
-
-			#check inputs
-			if self.error_check:
-				self._CheckInputPol(r0,t0,p0)
-			
-			#rotate to current sheet coords	
-			x,y,z,costheta,sintheta,cosphi,sinphi = self._ConvInputPol(r0,t0,p0)	
+		#rotate and check input SIII coordinates to current sheet coords
+		x,y,z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
 			
 		#create the output arrays
 		n = np.size(x)
@@ -921,20 +997,13 @@ class Model(object):
 		Brho = np.zeros(n,dtype='float64')
 		Bphi = np.zeros(n,dtype='float64')
 		Bz = np.zeros(n,dtype='float64')
-		
-
-		
-		
+			
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(x,y,z)
 		
 		
 		#return to SIII coordinates
-		if self.CartesianOut:
-			B0,B1,B2 = self._ConvOutputCart(x,y,Brho,Bphi,Bz)
-		else:
-			B0,B1,B2 = self._ConvOutputPol(costheta,sintheta,cosphi,sinphi,
-											x,y,Brho,Bphi,Bz)
+		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,Brho,Bphi,Bz)
 		
 		#turn into a nx3 array
 		Bout[:,0] = B0
