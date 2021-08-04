@@ -7,91 +7,91 @@ from ._Integrate import _Integrate
 
 class Model(object):
 	def __init__(self,**kwargs):
-	'''
-	Code to calculate the perturbation magnetic field produced by the 
-	Connerney (CAN) current sheet, which is represented by a finite disk 
-	of current.	This disk has variable parameters including the current 
-	density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
-	is centered on the magnetic equator (shifted in longitude and tilted 
-	according to the dipole field parameters of an internal field model 
-	like VIP4 or JRM09). This 2020 version includes a radial current per 
-	Connerney et al. (2020), 
-	https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
+		'''
+		Code to calculate the perturbation magnetic field produced by the 
+		Connerney (CAN) current sheet, which is represented by a finite disk 
+		of current.	This disk has variable parameters including the current 
+		density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
+		is centered on the magnetic equator (shifted in longitude and tilted 
+		according to the dipole field parameters of an internal field model 
+		like VIP4 or JRM09). This 2020 version includes a radial current per 
+		Connerney et al. (2020), 
+		https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-	Keyword Arguments (shorthand keywords in brackets)
-	=================
-	mu_i_div2__current_density_nT (mu_i): float
-		mu0i0/2 term (current sheet current density), in nT
-	i_rho__azimuthal_current_density_nT (i_rho) : float
-		azimuthal current term from Connerney et al., 2020
-	r0__inner_rj (r0) : float
-		Inner edge of current disk in Rj
-	r1__outer_rj (r1) : float
-		Outer edge of current disk in Rj
-	d__cs_half_thickness_rj (d) : float
-		Current sheet half thickness in Rj
-	xt__cs_tilt_degs (xt) : float
-		Current sheet tilt in degrees
-	xp__cs_rhs_azimuthal_angle_of_tilt_degs (xp) : float
-		Current sheet tilt longitude (right handed) in degrees
-	equation_type: str
-		Define method for calculating the current sheet field, may be 
-		one of the following: 'hybrid'|'analytic'|'integral'
-		See notes below for more information.
-	error_check : bool
-		If True (default) then inputs will be checked for potential errors.		
-	CartesianIn : bool
-		If True (default) the inputs to the model will be expected to be 
-		in Cartesian right-handed System III coordinates. If False, then
-		the inputs should be in spherical polar coordinates.
-	CartesianOut : bool
-		If True (default) the output magnetic field will be in Cartesian
-		right-handed System III coordinates. Otherwise, the magnetic 
-		field components produced will be radial, meridional and 
-		azimuthal.
+		Keyword Arguments (shorthand keywords in brackets)
+		=================
+		mu_i_div2__current_density_nT (mu_i): float
+			mu0i0/2 term (current sheet current density), in nT
+		i_rho__azimuthal_current_density_nT (i_rho) : float
+			azimuthal current term from Connerney et al., 2020
+		r0__inner_rj (r0) : float
+			Inner edge of current disk in Rj
+		r1__outer_rj (r1) : float
+			Outer edge of current disk in Rj
+		d__cs_half_thickness_rj (d) : float
+			Current sheet half thickness in Rj
+		xt__cs_tilt_degs (xt) : float
+			Current sheet tilt in degrees
+		xp__cs_rhs_azimuthal_angle_of_tilt_degs (xp) : float
+			Current sheet tilt longitude (right handed) in degrees
+		equation_type: str
+			Define method for calculating the current sheet field, may be 
+			one of the following: 'hybrid'|'analytic'|'integral'
+			See notes below for more information.
+		error_check : bool
+			If True (default) then inputs will be checked for potential errors.		
+		CartesianIn : bool
+			If True (default) the inputs to the model will be expected to be 
+			in Cartesian right-handed System III coordinates. If False, then
+			the inputs should be in spherical polar coordinates.
+		CartesianOut : bool
+			If True (default) the output magnetic field will be in Cartesian
+			right-handed System III coordinates. Otherwise, the magnetic 
+			field components produced will be radial, meridional and 
+			azimuthal.
 
-	Returns
-	========
-	model : object
-		This is an instance of the con2020.Model object. To obtain the
-		magnetic field, call the Field() member function, e.g.:
+		Returns
+		========
+		model : object
+			This is an instance of the con2020.Model object. To obtain the
+			magnetic field, call the Field() member function, e.g.:
+			
+			model = con2020.Model()
+			B = model.Field(x,y,z)
+
+		This code takes a hybrid approach to calculating the current sheet 
+		field, using the integral equations in some regions and the analytic 
+		equations in others. Following Connerney et al. 1981, figure A1, and 
+		Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
+		equations is most important near rho = r0 and z = 0.
 		
-		model = con2020.Model()
-		B = model.Field(x,y,z)
+		By default, this code uses the analytic equations everywhere except 
+		|Z| < D*1.5 and |Rho-R0| < 2.
 
-	This code takes a hybrid approach to calculating the current sheet 
-	field, using the integral equations in some regions and the analytic 
-	equations in others. Following Connerney et al. 1981, figure A1, and 
-	Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
-	equations is most important near rho = r0 and z = 0.
-	
-	By default, this code uses the analytic equations everywhere except 
-	|Z| < D*1.5 and |Rho-R0| < 2.
-
-	Analytic Equations
-	==================
-	For the analytic equations, we use the equations  
-	provided by Edwards et al. 2001: 
-	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
-	
-	
-	Integral Equations
-	==================
-	For the integral equations we use the Bessel functions from 
-	Connerney et al. 1981, eqs. 14, 15, 17, 18.
-	
-	We do not integrate lambda from zero to infinity, but vary the 
-	integration limit depending on the value of the Bessel functions.
-	
-	Other Notes
-	===========
-	
-	Keyword equation_type can be set to 'integral' or 'analytic' if the 
-	user wants to force using the integral or analytic equations ,by 
-	Marissa Vogt, March 2021.
-	
-	RJ Wilson did some speedups and re-formatting of lines, also March 2021
-	'''		
+		Analytic Equations
+		==================
+		For the analytic equations, we use the equations  
+		provided by Edwards et al. 2001: 
+		https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
+		
+		
+		Integral Equations
+		==================
+		For the integral equations we use the Bessel functions from 
+		Connerney et al. 1981, eqs. 14, 15, 17, 18.
+		
+		We do not integrate lambda from zero to infinity, but vary the 
+		integration limit depending on the value of the Bessel functions.
+		
+		Other Notes
+		===========
+		
+		Keyword equation_type can be set to 'integral' or 'analytic' if the 
+		user wants to force using the integral or analytic equations ,by 
+		Marissa Vogt, March 2021.
+		
+		RJ Wilson did some speedups and re-formatting of lines, also March 2021
+		'''		
 		
 		#list the default arguments here
 		defargs = {	'mu_i'			: 139.6,
@@ -187,6 +187,10 @@ class Model(object):
 		self.Deg2Rad = np.pi/180.0
 		self.dipole_shift = self.xp*self.Deg2Rad # xp is longitude of the current sheet
 		self.theta_cs = self.xt*self.Deg2Rad # current sheet tilt
+		self.cosxp = np.cos(self.dipole_shift)
+		self.sinxp = np.sin(self.dipole_shift)
+		self.cosxt = np.cos(self.theta_cs)
+		self.sinxt = np.sin(self.theta_cs)
 
 		#this stuff is for integration
 		self.dlambda_brho    = 1e-4  #% default step size for Brho function
@@ -242,28 +246,24 @@ class Model(object):
 		sinp : float	
 			sin(phi)
 		'''
-		#this bit needs rewriting/simplifying
-	
-		#convert to spherical polar coords
-		r = np.sqrt(x0**2 + y0**2 + z0**2)
-		theta = np.arccos(z0/r)
-		phi = (np.arctan2(y0,x0) + (2*np.pi)) % (2*np.pi)		
-		
-		#These will be needed later on, but will also be simplified
-		sint = np.sin(theta)
-		cost = np.cos(theta)
-		sinp = np.sin(phi)
-		cosp = np.cos(phi)
 
-		x = r*sin_theta*np.cos(phi-self.dipole_shift)
-		y = r*sin_theta*np.sin(phi-self.dipole_shift)
-		z = r*cos_theta
-		
-		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)
-		y1 = y
-		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)		
-		
-		
+		rho2 = x0*x0 + y0*y0
+		rho0 = np.sqrt(rho2)
+		r = np.sqrt(rho2 + z0**2)
+
+		cost = z0/r
+		sint = rho0/r
+		sinp = y0/rho0
+		cosp = x0/rho0
+
+		#rotate x and y to align with the current sheet longitude
+		x = rho0*(cosp*self.cosxp + sinp*self.sinxp)
+		y1 = rho0*(sinp*self.cosxp - cosp*self.sinxp)
+
+		#rotate about y axis to align with current sheet
+		x1 = x*self.cosxt + z0*self.sinxt
+		z1 = z0*self.cosxt - x*self.sinxt		
+			
 		return x1,y1,z1,cost,sint,cosp,sinp
 		
 	def _ConvOutputCart(self,x1,y1,Brho1,Bphi1,Bz1):
