@@ -1,7 +1,33 @@
 import numpy as np
 
 def _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2):
-
+	'''
+	Small rho approximations calculated using equations 9a and 9b of 
+	Edwards et al 2001.
+	
+	Inputs
+	======
+	rho : float
+		rho current sheet coordinate (Rj).
+	zmd : float
+		z - d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	zpd : float
+		z + d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	mui2 : float
+		Current sheet current density (nT).
+	a2 : float
+		Inner/Outer edge of current disk squared (Rj^2).
+	
+	Returns
+	=======
+	Brho : float
+		rho-component of the magnetic field.
+	Bz : float
+		z-component of the magnetic field.	
+	
+	'''
 	zmd2 = zmd*zmd
 	zpd2 = zpd*zpd
 	f1 = np.sqrt(zmd2 + a2)
@@ -33,7 +59,37 @@ def _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2):
 	return Brho,Bz
 	
 def _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
-
+	'''
+	Small rho approximations calculated using equations A1 and A2 of 
+	Connerney et al 1981.
+	
+	Inputs
+	======
+	rho : float
+		rho current sheet coordinate (Rj).
+	z : float
+		z current sheet coordinate (Rj).
+	zmd : float
+		z - d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	zpd : float
+		z + d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	mui2 : float
+		Current sheet current density (nT).
+	a2 : float
+		Inner/Outer edge of current disk squared (Rj^2).
+	D : float
+		Current sheet half-thickness (Rj).
+			
+	Returns
+	=======
+	Brho : float
+		rho-component of the magnetic field.
+	Bz : float
+		z-component of the magnetic field.	
+	
+	'''
 	zmd2 = zmd*zmd
 	zpd2 = zpd*zpd
 	f1 = np.sqrt(zmd2 + a2)
@@ -47,7 +103,37 @@ def _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 	return Brho,Bz
 	
 def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
+	'''
+	Small rho approximations calculated using equations 13a and 13b of 
+	Edwards et al 2001.
 	
+	Inputs
+	======
+	rho : float
+		rho current sheet coordinate (Rj).
+	z : float
+		z current sheet coordinate (Rj).
+	zmd : float
+		z - d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	zpd : float
+		z + d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	mui2 : float
+		Current sheet current density (nT).
+	a2 : float
+		Inner/Outer edge of current disk squared (Rj^2).
+	D : float
+		Current sheet half-thickness (Rj).
+			
+	Returns
+	=======
+	Brho : float
+		rho-component of the magnetic field.
+	Bz : float
+		z-component of the magnetic field.	
+	
+	'''	
 	#some common variables
 	zmd2 = zmd*zmd
 	zpd2 = zpd*zpd
@@ -71,7 +157,37 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
 	return Brho,Bz
 	
 def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
+	'''
+	Small rho approximations calculated using equations A7 and A8 of 
+	Connerney et al 1981.
 	
+	Inputs
+	======
+	rho : float
+		rho current sheet coordinate (Rj).
+	z : float
+		z current sheet coordinate (Rj).
+	zmd : float
+		z - d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	zpd : float
+		z + d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	mui2 : float
+		Current sheet current density (nT).
+	a2 : float
+		Inner/Outer edge of current disk squared (Rj^2).
+	D : float
+		Current sheet half-thickness (Rj).
+	
+	Returns
+	=======
+	Brho : float
+		rho-component of the magnetic field.
+	Bz : float
+		z-component of the magnetic field.	
+	
+	'''	
 	#some common variables
 	zmd2 = zmd*zmd
 	zpd2 = zpd*zpd
@@ -97,6 +213,9 @@ def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 	
 
 def _AnalyticOriginal(rho,z,D,a,mui2):
+	
+	
+	
 	#these values appear to be used for all parts of the process
 	#so let's calculate them all
 	zpd = z + D
@@ -185,7 +304,33 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 	return Brho,Bz
 	
 def _Analytic(rho,z,D,a,mui2,Edwards=True):
+	'''
+	Calculate the analytical version of the model.
 	
+	Inputs
+	======
+	rho : float
+		rho coordinate (Rj).
+	z : float
+		z coordinate (Rj).
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Inner edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+	Edwards : bool
+		If True, use Edwards et al 2001 equations, otherwise use the
+		Connerney et al 1981 equations.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
 	
 	if Edwards:
 		return _AnalyticEdwards(rho,z,D,a,mui2)
@@ -194,7 +339,36 @@ def _Analytic(rho,z,D,a,mui2,Edwards=True):
 
 
 def _Finite(rho,z,D,a,mui2,Edwards=True):
-
+	'''
+	Calculate the analytical version of the model using the outer edge
+	of the current sheet - this provides a field to subtract from that
+	calculated using the inner edge which will take into account the 
+	finite size of the current sheet.
+	
+	Inputs
+	======
+	rho : float
+		rho coordinate (Rj).
+	z : float
+		z coordinate (Rj).
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Outer edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+	Edwards : bool
+		If True, use Edwards et al 2001 equations, otherwise use the
+		Connerney et al 1981 equations.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
 	zpd = z + D
 	zmd = z - D
 	a2 = a*a
@@ -207,10 +381,70 @@ def _Finite(rho,z,D,a,mui2,Edwards=True):
 		return _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D)
 		
 def _FiniteEdwards(rho,z,D,a,mui2):
-
+	'''
+	Calculate the Edwards et al version of the model using the outer edge
+	of the current sheet - this provides a field to subtract from that
+	calculated using the inner edge which will take into account the 
+	finite size of the current sheet.
+	
+	Inputs
+	======
+	rho : float
+		rho coordinate (Rj).
+	z : float
+		z coordinate (Rj).
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Outer edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+	Edwards : bool
+		If True, use Edwards et al 2001 equations, otherwise use the
+		Connerney et al 1981 equations.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
 	return _AnalyticEdwards(rho,z,D,a,mui2)
 
 def _FiniteOriginal(rho,z,D,a,mui2):
+	'''
+	Calculate the Connerney et al version of the model using the outer edge
+	of the current sheet - this provides a field to subtract from that
+	calculated using the inner edge which will take into account the 
+	finite size of the current sheet.
+	
+	Inputs
+	======
+	rho : float
+		rho coordinate (Rj).
+	z : float
+		z coordinate (Rj).
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Outer edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+	Edwards : bool
+		If True, use Edwards et al 2001 equations, otherwise use the
+		Connerney et al 1981 equations.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
+
 	zpd = z + D
 	zmd = z - D
 	a2 = a*a	
