@@ -4,8 +4,16 @@ import numpy as np
 class _Switcher(object):
 	def __init__(self,check1,check2):
 		'''
-		This objects will take a couple of checks (1 and 2) and 
+		This object will take a couple of checks (1 and 2) and 
 		calculate a bunch of stuff based on those checks for each zcase.
+		
+		Inputs
+		======
+		check1 : float
+			abs(abs(z) - d)
+		check2 : bool
+			abs(z) <= 1.1*d
+		
 		
 		'''
 		
@@ -36,6 +44,23 @@ class _Switcher(object):
 		'''
 		Fetch the appropriate set of indices and lambdas based on the 
 		current zcase (from 1 to 7)
+		
+		Inputs
+		======
+		zcase : int
+			Which z-case to use.
+			
+		Returns
+		=======
+		inds : int
+			Array of indices where check1 and check2 match the input
+			zcase.
+		lambda_max_brho : float
+			Lambda limit over which to integrate the Bessel functions
+			for the Brho integral.
+		lambda_max_bz : float
+			Lambda limit over which to integrate the Bessel functions
+			for the Bz integral.
 		
 		'''
 		
