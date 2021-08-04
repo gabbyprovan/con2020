@@ -349,16 +349,17 @@ class Model(object):
 	
 		sint = np.sin(theta)
 		cost = np.cos(theta)
-		sinp   = np.sin(phi)
-		cosp   = np.cos(phi)
+		sinp = np.sin(phi)
+		cosp = np.cos(phi)
 
-		x = r*sin_theta*np.cos(phi-self.dipole_shift)
-		y = r*sin_theta*np.sin(phi-self.dipole_shift)
-		z = r*cos_theta
+		#surprisingly this is slightly (~20%) quicker than 
+		#x = r*sint*np.cos(phi - self.dipole_shift) etc.
+		x = r*sint*(cosp*self.cosxp + sinp*self.sinxp)
+		y1 = r*sint*(sinp*self.cosxp - cosp*self.sinxp)
+		z = r*cost
 		
-		x1 = x*np.cos(self.theta_cs) + z*np.sin(self.theta_cs)#
-		y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
-		z1 = z*np.cos(self.theta_cs) - x*np.sin(self.theta_cs)#		
+		x1 = x*self.cosxt + z*self.sinxt
+		z1 = z*self.cosxt - x*self.sinxt	
 		
 		
 		return x1,y1,z1,cost,sint,cosp,sinp
