@@ -406,26 +406,24 @@ class Model(object):
 			
 		
 		'''		
+		
+		#this now runs in about 60% of the time it used to
 		rho = np.sqrt(x1*x1 + y1*y1)
 		cosphi1 = x1/rho
 		sinphi1 = y1/rho
 		
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
-		
-		costheta_cs = np.cos(self.theta_cs)
-		sintheta_cs = np.sin(self.theta_cs)
-		Bx = Bx1*costheta_cs - Bz1*sintheta_cs
-		Bz = Bx1*sintheta_cs + Bz1*costheta_cs		
-	
-		cos_xp = np.cos(self.dipole_shift)
-		sin_xp = np.sin(self.dipole_shift)
-		Bx2 = Bx*cos_xp - By1*sin_xp
-		By2 = By1*cos_xp + Bx*sin_xp	
 
-		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost#
-		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint#
-		Bp = -Bx2*     sinp+By2*     cosp#
+		Bx = Bx1*self.cosxt - Bz1*self.sinxt
+		Bz = Bx1*self.sinxt + Bz1*self.cosxt		
+
+		Bx2 = Bx*self.cosxp - By1*self.sinxp
+		By2 = By1*self.cosxp + Bx*self.sinxp	
+
+		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost
+		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint
+		Bp = -Bx2*     sinp+By2*     cosp
 	
 		return Br,Bt,Bp
 
