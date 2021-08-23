@@ -27,26 +27,60 @@ python3 setup.py insall --user
 
 ## Usage
 
-The module contains two functions which can be used to access the model  (`Model` and `ModelCart`) and a test function (`Test`). Both model functions will accept scalars, `numpy` arrays, `lists` and `tuples` of coordinates - they each get converted to a `numpy.ndarray`.
+To call the model, an object must be created first using `con2020.Model()`, where the default model parameters, model equations used or coordinate systems of input and output can be altered using keywords, e.g:
 
 ```python
 import con2020
 
-#call the model using spherical polar coordinates (System III)
-Br,Bp,Bt = con2020.Model(r,theta,phi)
+#initialize a model object with default parameters
+def_model = con2020.Model()
 
-#or using cartesian coordinates (System III)
-Bx,By,Bz = con2020.ModelCart(x,y,z)
+#initialize a model which uses spherical polar coordinates for input and output
+sph_model = con2020.Model(CartesianIn=False,CartesianOut=False)
 
-#for a full list of keywords
-con2020.Model?
-con2020.ModelCart?
+#initialize a model with custom parameters (longhand)
+cust_model0 = con2020.Model(mu_i_div2__current_density_nT=150.0,
+                           	r0__inner_rj=9.5,
+                           	d__cs_half_thickness_rj=3.1)
 
-#test the model
-con2020.Test()
+#equivalently, a custom parameter model (shorthand)
+cust_model1 = con2020.Model(mu_i=150.0,r0=9.5,d=3.1)
 ```
 
-The `Test()` function should produce the following:
+Once a model object is initialized, the model field can be obtained by calling the member function `Field()` and supplying input coordinates as three scalars, or three arrays (all of which are in right-handed System III), e.g.:
+
+```python
+#Example 1: the model at a single Cartesian position (all in Rj)
+x = 5.0
+y = 10.0
+z = 6.0
+Bcart = def_model.Field(x,y,z)
+
+#Example 2: the model at an array of positions of spherical polar coordinates
+r = np.array([10.0,20.0,30.0])					#radial distance in Rj
+theta = np.array([30.0,35.0,40.0])*np.pi/180.0	#colatitude in radians 
+phi = np.array([90.0,95.0,100.0])*np.pi/180.0	#east longitude in radians
+Bpol = sph_model.Field(r,theta,phi)
+```
+
+The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the number of input coordinates, `B[:,0]` corresponds to either `Bx` or `Br`; `B[:,1]` corresponds to `By` or `Btheta`; and `B[:,2]` corresponds to either `Bz` or `Bphi`.  A full list of model keywords is shown below:
+
+| Keyword (long)                            | Keyword (short) | Default Value | Description                                                  |
+| ----------------------------------------- | --------------- | ------------- | ------------------------------------------------------------ |
+| `mu_i_div2__current_density_nT`           | `mu_i`          | `139.6`       | Current sheet current density in nT.                         |
+| `i_rho__azimuthal_current_density_nT`     | `i_rho`         | `16.7`        | Azimuthal current density in nT from Connerney et al 2020.   |
+| `r0__inner_rj`                            | `r0`            | `7.8`         | Inner edge of the current sheet in R<sub>j</sub>.            |
+| `r1__outer_rj`                            | `r1`            | `51.4`        | Outer edge of the current sheet in R<sub>j</sub>.            |
+| `d__cs_half_thickness_rj`                 | `d`             | `3.6`         | Current sheet half thickness in R<sub>j</sub>.               |
+| `xt__cs_tilt_degs`                        | `xt`            | `9.3`         | Tilt angle of the current sheet away from the SIII _z_-axis in degrees. |
+| `xp__cs_rhs_azimuthal_angle_of_tilt_degs` | `xp`            | `-24.2`       | (Right-Handed) Longitude towards which the current sheet is tilted in degrees. |
+| `equation_type`                           |                 | `'hybrid'`    | Which method to use, can be:<br />`'analytic'`  - use only the analytical equations<br />`'integral'` - numerically integrate the equations<br />`'hybrid' `- a combination of analytical and integration (default) |
+| `error_check`                             |                 | `True`        | Check errors on inputs the the `Field()` member function - set to `False` at your own risk for a slight speedup. |
+| `CartesianIn`                             |                 | `True`        | If `True` (default) then the input coordinates are expected to be in Cartesian right-handed SIII coordinates. If `False` then right-handed spherical polar SIII coordinates will be expected. |
+| `CartesianOut`                            |                 | `True`        | If `True` the output magnetic field components will be in right-handed Cartesian SIII coordinates. If `False` then the output will be such that it has radial, meridional and azimuthal components. |
+| `Edwards`                                 |                 | `True`        | If `True` (default) then the Edwards et al 2001 divergence-free equations are used for the analytical model. If `False` then the original equations of Connerney et al 1981 will be used. |
+
+The `con2020.Test()` function should produce the following:
 
 ![](Test.png)
 

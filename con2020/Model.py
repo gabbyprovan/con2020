@@ -1,468 +1,1019 @@
 import numpy as np
-from scipy.special import jv
+from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
+from ._Analytic import _AnalyticEdwards,_AnalyticOriginal,_FiniteEdwards,_FiniteOriginal
+from ._Integrate import _Integrate
 
-def Model(r,theta,phi,mu_i=139.6,i_rho=16.7,r0=7.8,r1=51.4,d=3.6,xt=9.3,
-			xp=-24.2,equation_type='hybrid',no_error_check=False,
-			Cartesian=False):
-	'''
-	Code to calculate the perturbation magnetic field produced by the 
-	Connerney (CAN) current sheet, which is represented by a finite disk 
-	of current.	This disk has variable parameters including the current 
-	density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
-	is centered on the magnetic equator (shifted in longitude and tilted 
-	according to the dipole field parameters of an internal field model 
-	like VIP4 or JRM09). This 2020 version includes a radial current per 
-	Connerney et al. (2020), 
-	https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-	Inputs
-	======
-	r : float
-		Radial distance, in Rj (System III)
-	theta : float
-		Colatitude, in radians (System III)
-	phi : float
-		longitude, right handed, in radians (System III)
-	mu_i : float
-		mu0i0/2 term (current sheet current density), in nT
-	i_rho : float
-		azimuthal current term from Connerney et al., 2020
-	r0 : float
-		Inner edge of current disk in Rj
-	r1 : float
-		Outer edge of current disk in Rj
-	d : float
-		Current sheet half thickness in Rj
-	xt : float
-		Dipole tilt in degrees
-	xp : float
-		Dipole longitude (right handed) in degrees
-	equation_type: str
-		Define method for calculating the current sheet field, may be 
-		one of the following: 'hybrid'|'analytic'|'integral'
-		See notes below for more information.
-	no_error_check : bool
-		Do not do extra checks that inputs are valid.		
-	Cartesian : bool
-		If True, magnetic field is returned in Cartesian coordinates,
-		otherwise the returned values are in spherical polar coordinates
+class Model(object):
+	def __init__(self,**kwargs):
+		'''
+		Code to calculate the perturbation magnetic field produced by the 
+		Connerney (CAN) current sheet, which is represented by a finite disk 
+		of current.	This disk has variable parameters including the current 
+		density mu0i0, inner edge R0, outer edge R1, thickness D. The disk 
+		is centered on the magnetic equator (shifted in longitude and tilted 
+		according to the dipole field parameters of an internal field model 
+		like VIP4 or JRM09). This 2020 version includes a radial current per 
+		Connerney et al. (2020), 
+		https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JA028138
 
-	Returns
-	========
-	Magnetic field in SIII coordinates (right handed)
-	br : float
-		Radial field, in nT (or Bx if Cartesian == True)
-	bt : float
-		Meridional field, in nT (or By if Cartesian == True)
-	bp : float
-		Azimuthal field, in nT (or Bz if Cartesian == True)
+		Keyword Arguments (shorthand keywords in brackets)
+		=================
+		mu_i_div2__current_density_nT (mu_i): float
+			mu0i0/2 term (current sheet current density), in nT
+		i_rho__azimuthal_current_density_nT (i_rho) : float
+			azimuthal current term from Connerney et al., 2020
+		r0__inner_rj (r0) : float
+			Inner edge of current disk in Rj
+		r1__outer_rj (r1) : float
+			Outer edge of current disk in Rj
+		d__cs_half_thickness_rj (d) : float
+			Current sheet half thickness in Rj
+		xt__cs_tilt_degs (xt) : float
+			Current sheet tilt in degrees
+		xp__cs_rhs_azimuthal_angle_of_tilt_degs (xp) : float
+			Current sheet tilt longitude (right handed) in degrees
+		equation_type: str
+			Define method for calculating the current sheet field, may be 
+			one of the following: 'hybrid'|'analytic'|'integral'
+			See notes below for more information.
+		error_check : bool
+			If True (default) then inputs will be checked for potential errors.		
+		CartesianIn : bool
+			If True (default) the inputs to the model will be expected to be 
+			in Cartesian right-handed System III coordinates. If False, then
+			the inputs should be in spherical polar coordinates.
+		CartesianOut : bool
+			If True (default) the output magnetic field will be in Cartesian
+			right-handed System III coordinates. Otherwise, the magnetic 
+			field components produced will be radial, meridional and 
+			azimuthal.
 
-	This code takes a hybrid approach to calculating the current sheet 
-	field, using the integral equations in some regions and the analytic 
-	equations in others. Following Connerney et al. 1981, figure A1, and 
-	Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
-	equations is most important near rho = r0 and z = 0.
-	
-	By default, this code uses the analytic equations everywhere except 
-	|Z| < D*1.5 and |Rho-R0| < 2.
+		Returns
+		========
+		model : object
+			This is an instance of the con2020.Model object. To obtain the
+			magnetic field, call the Field() member function, e.g.:
+			
+			model = con2020.Model()
+			B = model.Field(x,y,z)
 
-	Analytic Equations
-	==================
-	For the analytic equations, we use the equations provided in 
-	Connerney et al., 1981 
-	(https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JA086iA10p08370)
-	   
-	Other analytic approximations to the CAN sheet equations are 
-	provided by Edwards et al. 2001: 
-	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
-	
-	
-	Integral Equations
-	==================
-	For the integral equations we use the Bessel functions from 
-	Connerney et al. 1981, eqs. 14, 15, 17, 18.
-	
-	We do not integrate lambda from zero to infinity, but vary the 
-	integration limit depending on the value of the Bessel functions.
-	
-	Other Notes
-	===========
-	
-	Keyword equation_type can be set to 'integral' or 'analytic' if the 
-	user wants to force using the integral or analytic equations ,by 
-	Marissa Vogt, March 2021.
-	
-	RJ Wilson did some speedups and re-formatting of lines, also March 2021
-	'''
+		This code takes a hybrid approach to calculating the current sheet 
+		field, using the integral equations in some regions and the analytic 
+		equations in others. Following Connerney et al. 1981, figure A1, and 
+		Edwards et al. (2001), figure 2, the choice of integral vs. analytic 
+		equations is most important near rho = r0 and z = 0.
+		
+		By default, this code uses the analytic equations everywhere except 
+		|Z| < D*1.5 and |Rho-R0| < 2.
 
-	if not no_error_check:
-		if not equation_type in ['analytic','hybrid','integral']:
-			raise SystemExit ('ERROR: case statement has unrecognized string - was your equation_type lower case?')	
+		Analytic Equations
+		==================
+		For the analytic equations, we use the equations  
+		provided by Edwards et al. 2001: 
+		https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
+		
+		
+		Integral Equations
+		==================
+		For the integral equations we use the Bessel functions from 
+		Connerney et al. 1981, eqs. 14, 15, 17, 18.
+		
+		We do not integrate lambda from zero to infinity, but vary the 
+		integration limit depending on the value of the Bessel functions.
+		
+		Other Notes
+		===========
+		
+		Keyword equation_type can be set to 'integral' or 'analytic' if the 
+		user wants to force using the integral or analytic equations ,by 
+		Marissa Vogt, March 2021.
+		
+		RJ Wilson did some speedups and re-formatting of lines, also March 2021
+		'''		
+		
+		#list the default arguments here
+		defargs = {	'mu_i'			: 139.6,
+					'i_rho' 		: 16.7,
+					'r0'			: 7.8,
+					'r1'			: 51.4,
+					'd'				: 3.6,
+					'xt'			: 9.3,
+					'xp'			: -24.2,
+					'equation_type'	: 'hybrid',
+					'error_check'	: True,
+					'CartesianIn'	: True,
+					'CartesianOut'	: True,
+					'Edwards'		: True }
+					
+		#list the long names
+		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
+						'r0'	: 'r0__inner_rj',
+						'r1'	: 'r1__outer_rj',
+						'd'		: 'd__cs_half_thickness_rj',
+						'xt'	: 'xt__cs_tilt_degs',
+						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
+						'i_rho'	: 'i_rho__azimuthal_current_density_nT'		  }
+						
+		#check input kwargs
+		#for those which exist (either in long or short name form) add
+		#them to this object using the short name as the object tag
+		#Otherwise use the default value
+		
+		#the input keys
+		ikeys = list(kwargs.keys())
+		
+		#default keys
+		dkeys = list(defargs.keys())
+		
+		#short and long name keys
+		skeys = list(longnames.keys())
+		lkeys = [longnames[k] for k in skeys]
+			
+		#loop through each one		
+		for k in dkeys:
+			if k in ikeys:
+				#short name found in kwargs - add to this object
+				setattr(self,k,kwargs[k])
+			elif longnames.get(k,'') in ikeys:
+				#long name found - add to object
+				setattr(self,k,kwargs[longnames[k]])
+			else:
+				#key not found, use default
+				setattr(self,k,defargs[k])
+				
+		
+		#check for additional keys and issue a warning
+		for k in ikeys:
+			if not ((k in skeys) or (k in lkeys) or (k in dkeys)):
+				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
+		
+		#now do the checks
+		self.equation_type = self.equation_type.lower()
+		if not self.equation_type in ['analytic','hybrid','integral']:
+			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")	
+		
+		ckeys = ['mu_i','i_rho','r0','r1','d','xt']
+		for k in ckeys:
+			x = getattr(self,k)
+			if (x <= 0) or (np.isfinite(x) == False):
+				raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
 
-		if np.min(r) < 0 or np.max(r) > 200:
+		if (np.isfinite(self.xp) == False):
+			raise SystemExit("'xp' should be finite")	
+			
+		#set the analytic function to use
+		if self.Edwards:
+			self._AnalyticFunc = _AnalyticEdwards
+		else:
+			self._AnalyticFunc = _AnalyticOriginal
+			
+		#set the analytic function to use for the outer bit of the current sheet
+		if self.Edwards:
+			self._Finite = _FiniteEdwards
+		else:
+			self._Finite = _FiniteOriginal		
+			
+		#set the integral functions (scalar and vector)
+		if self.equation_type == 'analytic':
+			self._ModelFunc = self._Analytic
+		elif self.equation_type == 'integral':
+			self._ModelFunc = self._Integral
+		else:
+			self._ModelFunc = self._Hybrid
+			
+		#set the coordinate conversion functions for input
+		if self.CartesianIn:
+			if self.error_check:
+				self._InputConv = self._ConvInputCartSafe
+			else:
+				self._InputConv = self._ConvInputCart
+		else:
+			if self.error_check:
+				self._InputConv = self._ConvInputPolSafe
+			else:
+				self._InputConv = self._ConvInputPol	
+				
+		#set the output functions
+		if self.CartesianOut:
+			self._OutputConv = self._ConvOutputCart
+		else:
+			self._OutputConv = self._ConvOutputPol		
+				
+		#some constants
+		self.Deg2Rad = np.pi/180.0
+		self.dipole_shift = self.xp*self.Deg2Rad # xp is longitude of the current sheet
+		self.theta_cs = self.xt*self.Deg2Rad # current sheet tilt
+		self.cosxp = np.cos(self.dipole_shift)
+		self.sinxp = np.sin(self.dipole_shift)
+		self.cosxt = np.cos(self.theta_cs)
+		self.sinxt = np.sin(self.theta_cs)
+
+		#this stuff is for integration
+		self.dlambda_brho    = 1e-4  #% default step size for Brho function
+		self.dlambda_bz      = 5e-5  #% default step size for Bz function
+		
+		#each of the following variables will be indexed by zcase (starting at 0)
+		self.lambda_max_brho = [4,4,40,40,100,100]
+		self.lambda_max_bz = [100,20,100,20,100,20]
+		
+		self.lambda_int_brho = []
+		self.lambda_int_bz = []
+		
+		self.beselj_rho_r0_0 = []
+		self.beselj_z_r0_0 = []
+
+		for i in range(0,6):
+			#save the lambda arrays
+			self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
+			self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
+			
+			#save the Bessel functions
+			self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
+			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
+	
+	def _ConvInputCartSafe(self,x0,y0,z0):
+		'''
+		Converts input coordinates from Cartesian right-handed System 
+		III to current sheet coordinates - with error checking.
+		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
+		#check input
+		self._CheckInputCart(x0,y0,z0)
+		
+		#now convert it
+		return self._ConvInputCart(x0,y0,z0)
+	
+	def _ConvInputCart(self,x0,y0,z0):
+		'''
+		Converts input coordinates from Cartesian right-handed System 
+		III to current sheet coordinates.
+		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''
+
+		rho0_sq = x0*x0 + y0*y0
+		rho0 = np.sqrt(rho0_sq)
+		r = np.sqrt(rho0_sq + z0**2)
+
+		cost = z0/r
+		sint = rho0/r
+		sinp = y0/rho0
+		cosp = x0/rho0
+
+		#rotate x and y to align with the current sheet longitude
+		x = rho0*(cosp*self.cosxp + sinp*self.sinxp)
+		y1 = rho0*(sinp*self.cosxp - cosp*self.sinxp)
+
+		#rotate about y axis to align with current sheet
+		x1 = x*self.cosxt + z0*self.sinxt
+		z1 = z0*self.cosxt - x*self.sinxt	
+
+		#some other bits we need for the model
+		rho1 = np.sqrt(x1*x1 + y1*y1)
+		abs_z1 = np.abs(z1)
+			
+		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
+		
+	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
+		'''
+		Convert the output magnetic field from cylindrical current 
+		sheet coordinates to Cartesian right-handed System III
+		coordinates.
+		
+		Inputs
+		======
+		cost : float (dummy)
+			cos(theta) - where theta is the colatitude
+		sint : float (dummy)
+			sin(theta)
+		cosp : float (dummy)
+			cos(phi) - where phi is east longitude
+		sinp : float (dummy)	
+			sin(phi)
+		x1 : float
+			x-position in current sheet coords (Rj).
+		y1 : float
+			y-position in current sheet coords (Rj).
+		rho1 : float
+			distance from z-axis (Rj).
+		Brho1 : float	
+			Rho component of magnetic field (nT).
+		Bphi1 : float
+			Phi (azimuthal) component of the magnetic field (nT).
+		Bz1 : float
+			z component of the magnetic field (nT).
+			
+		Returns
+		=======
+		Bx0 : float
+			x-component of magnetic field in right-handed System III
+			coordinates (nT).
+		By0 : float
+			y-component of magnetic field in right-handed System III
+			coordinates (nT).
+		Bz0 : float
+			z-component of magnetic field in right-handed System III
+			coordinates (nT).
+			
+		
+		'''
+		cosphi1 = x1/rho1
+		sinphi1 = y1/rho1
+		
+		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+
+		Bx = Bx1*self.cosxt - Bz1*self.sinxt
+		Bz0 = Bx1*self.sinxt + Bz1*self.cosxt		
+
+		Bx0 = Bx*self.cosxp - By1*self.sinxp
+		By0 = By1*self.cosxp + Bx*self.sinxp	
+	
+		return Bx0,By0,Bz0
+		
+	
+	def _ConvInputPolSafe(self,r,theta,phi):
+		'''
+		Converts input coordinates from spherical polar right-handed 
+		System III to Cartesian current sheet coordinates - with error
+		checks.
+		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
+		#check the input coordinates
+		self._CheckInputPol(r,theta,phi)
+		
+		#now convert coordinates
+		return self._ConvInputPol(r,theta,phi)
+		
+	def _ConvInputPol(self,r,theta,phi):
+		'''
+		Converts input coordinates from spherical polar right-handed 
+		System III to Cartesian current sheet coordinates.
+		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		Returns
+		=======
+		x1 : float
+			x current sheet coordinate
+		y1 : float
+			y current sheet coordinate
+		z1 : float
+			z current sheet coordinate
+		rho1 : float
+			distance from z-axis (Rj).
+		abs_z1 : float
+			abs(z1) (Rj).
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		'''		
+	
+		sint = np.sin(theta)
+		cost = np.cos(theta)
+		sinp = np.sin(phi)
+		cosp = np.cos(phi)
+
+		#surprisingly this is slightly (~20%) quicker than 
+		#x = r*sint*np.cos(phi - self.dipole_shift) etc.
+		x = r*sint*(cosp*self.cosxp + sinp*self.sinxp)
+		y1 = r*sint*(sinp*self.cosxp - cosp*self.sinxp)
+		z = r*cost
+		
+		x1 = x*self.cosxt + z*self.sinxt
+		z1 = z*self.cosxt - x*self.sinxt	
+	
+		#some other bits we need for the model
+		rho1 = np.sqrt(x1*x1 + y1*y1)
+		abs_z1 = np.abs(z1)
+			
+		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp	
+		
+
+
+	def _ConvOutputPol(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
+		'''
+		Convert the output magnetic field from cylindrical current 
+		sheet coordinates to spherical polar right-handed System III
+		coordinates.
+		
+		Inputs
+		======
+		cost : float
+			cos(theta) - where theta is the colatitude
+		sint : float
+			sin(theta)
+		cosp : float
+			cos(phi) - where phi is east longitude
+		sinp : float	
+			sin(phi)
+		x1 : float
+			x-position in current sheet coords (Rj).
+		y1 : float
+			y-position in current sheet coords (Rj).
+		rho1 : float
+			distance from z-axis (Rj).
+		Brho1 : float	
+			Rho component of magnetic field (nT).
+		Bphi1 : float
+			Phi (azimuthal) component of the magnetic field (nT).
+		Bz1 : float
+			z component of the magnetic field (nT).
+			
+		Returns
+		=======
+		Br : float
+			Radial component of magnetic field in right-handed System 
+			III coordinates (nT).
+		Bt : float
+			Meridional component of magnetic field in right-handed 
+			System III coordinates (nT).
+		Bp : float
+			Azimuthal component of magnetic field in right-handed System 
+			III coordinates (nT).
+			
+		
+		'''		
+		
+		#this now runs in about 60% of the time it used to
+		cosphi1 = x1/rho1
+		sinphi1 = y1/rho1
+		
+		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+
+		Bx = Bx1*self.cosxt - Bz1*self.sinxt
+		Bz = Bx1*self.sinxt + Bz1*self.cosxt		
+
+		Bx2 = Bx*self.cosxp - By1*self.sinxp
+		By2 = By1*self.cosxp + Bx*self.sinxp	
+
+		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost
+		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint
+		Bp = -Bx2*     sinp+By2*     cosp
+	
+		return Br,Bt,Bp
+
+		
+	def _CheckInputCart(self,x,y,z):
+		'''
+		Check the Cartesian inputs - if the checks fail then the
+		function raises an error.
+
+		
+		Inputs
+		======
+		x0 : float
+			System III x-coordinate (Rj).
+		y0 : float
+			System III y-coordinate (Rj).
+		z0 : float
+			System III z-coordinate (Rj).
+			
+		'''
+		if (np.size(x) != np.size(y)) or (np.size(x) != np.size(z)):
+			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
+		
+		#calculate r
+		r = np.sqrt(x*x + y*y + z*z)
+
+		if np.min(r) <= 0 or np.max(r) >= 200:
+			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
+
+
+	def _CheckInputPol(self,r,theta,phi):
+		'''
+		Check the spherical polar inputs - if the checks fail then the
+		function raises an error.
+
+		
+		Inputs
+		======
+		r : float
+			System III radial distance (Rj).
+		theta : float
+			System III colatitude (rad).
+		phi : float
+			System III east longitude (rad).
+			
+		'''
+		if np.min(r) <= 0 or np.max(r) >= 200:
 			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
 		if np.min(theta) < 0 or np.max(theta) > np.pi:
 			raise SystemExit ('ERROR: CoLat must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?). Returning...')
 
-		if np.min(phi)  < 0 or np.max(phi) > 2*np.pi:
-			raise SystemExit ('ERROR: Long must be in radians of 0 to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
+		if np.min(phi)  < -2*np.pi or np.max(phi) > 2*np.pi:
+			raise SystemExit ('ERROR: Long must be in radians of -2pi to 2pi only, and not outside that range (did you use degrees instead?). Returning...')	
+			
+		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
+			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
-	#convert inputs to numpy arrays if scalars are provided
-	if not hasattr(r,'__iter__'):
-		r = np.array([r])
-		theta = np.array([theta])
-		phi = np.array([phi])
+	def _Bphi(self,rho,abs_z,z):
+		'''
+		New to CAN2020 (not included in CAN1981): radial current 
+		produces an azimuthal field, so Bphi is nonzero
+
+		Inputs
+		======
+		rho : float
+			distance in the x-z plane of the current sheet in Rj.
+		abs_z : float
+			absolute value of the z-coordinate
+		z : float
+			signed version of the z-coordinate
+			
+		Returns
+		=======
+		Bphi : float
+			Azimuthal component of the magnetic field.
+
+		'''
+		Bphi = 2.7975*self.i_rho/rho
 		
-	#convert lists/tuples to numpy arrays
-	conv = not (isinstance(r,np.ndarray) and isinstance(theta,np.ndarray) and isinstance(phi,np.ndarray))
-	if conv:
-		r = np.array(r)
-		theta = np.array(theta)
-		phi = np.array(phi)
+		if np.size(rho) == 1:
+			if abs_z < self.d:
+				Bphi *= (abs_z/self.d)
+			if z > 0:
+				Bphi = -Bphi
+		else:
+			ind = np.where(abs_z < self.d)[0]
+			if ind.size > 0:
+				Bphi[ind] *= (abs_z[ind]/self.d)
+			ind = np.where(z > 0)[0]
+			if ind.size > 0:
+				Bphi[ind] = -Bphi[ind]
 		
-#% Convert to cartesian coordinates and rotate into magnetic longitude
-#% (x,y,z) are the shifted (phi) coordinates
-#  dipole_shift = double(xp_value)*!dpi/180. #xp_value is longitude of the dipole
-#  x = r*sin(theta)*cos(phi-dipole_shift)
-#  y = r*sin(theta)*sin(phi-dipole_shift)
-#  z = r*cos(theta)
-#% RJW way
-	Deg2Rad = np.pi/180.0
-	sin_theta = np.sin(theta)#
-	cos_theta = np.cos(theta)#
-	sin_phi   = np.sin(phi)#
-	cos_phi   = np.cos(phi)#
+		return Bphi
+		
+	def _Analytic(self,rho,abs_z,z):
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		using analytical equations either from Connerney et al 1981 or
+		the divergence-free equations from Edwards et al 2001 (defualt).
+		
+		The equations used are predefined on creation of the object
+		using the "Edwards" keyword (default=True).
+		
+		If Edwards == True:
+			Using equations 9a and 9b for the small rho approximation
+			and 13a and 13b for the large rho approximation of Edwards
+			et al.
+		
+		If Edwards == False:
+			Use equations A1-A4 of Connerney et al 1981 for the large 
+			rho approximation and A7 and A8 for the small rho 
+			approximation.
+			
+		Inputs
+		======
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
+		z : float
+			z coordinate (Rj)
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''
+		
+		#calculate the analytic solution first for Brho and Bz
+		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+		
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz
+		
+		
+	def _IntegralScalar(self,rho,abs_z,z):
+		'''
+		Integrates the model equations for an single set of input 
+		coordinates.
+		
+		Inputs
+		======
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
+		z : float
+			z coordinate (Rj)
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''				
 
-	dipole_shift = xp*Deg2Rad # % xp_value is longitude of the dipole
-	x = r*sin_theta*np.cos(phi-dipole_shift)
-	y = r*sin_theta*np.sin(phi-dipole_shift)
-	z = r*cos_theta#]
+		#check which "zcase" we need for this vector
+		check1 = np.abs(abs_z - self.d)		
+		check2 = abs_z <= self.d*1.1
+		
+		if check1 >= 0.7:
+			#case 1 or 2
+			zc = 1
+		elif (check1 < 0.7) and (check1 >= 0.1):
+			#case 3 or 4
+			zc = 3
+		else:
+			#case 5 or 6
+			zc = 5
+		#this bit does two things - it both takes into account the
+		#check2 thing and it makes zc an index in range 0 to 5 as 
+		#opposed to the zcase 1 to 6, so zi = zcase -1
+		zc -= np.int(check2)
+		
+		#do the integration
+		beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho)
+		beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho)
+		if (abs_z > self.d): #% Connerney et al. 1981 eqs. 14 and 15
+			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+							*np.sinh(self.d*self.lambda_int_brho[zc]) \
+							*np.exp(-abs_z*self.lambda_int_brho[zc]) \
+							/self.lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0 *self.beselj_z_r0_0[zc] \
+							*np.sinh(self.d*self.lambda_int_bz[zc]) \
+							*np.exp(-abs_z*self.lambda_int_bz[zc]) \
+							/self.lambda_int_bz[zc]  
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+			if z < 0:
+				Brho = -Brho
+		else:
+			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+							*(np.sinh(z*self.lambda_int_brho[zc]) \
+							*np.exp(-self.d*self.lambda_int_brho[zc])) \
+							/self.lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0  *self.beselj_z_r0_0[zc] \
+							*(1.0 -np.cosh(z*self.lambda_int_bz[zc]) \
+							*np.exp(-self.d*self.lambda_int_bz[zc])) \
+							/self.lambda_int_bz[zc]
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)#
+		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
 
-#% Rotate by the amount of the dipole tilt
-#% (x1,y1,z1) are the tilted (theta) and shifted (phi) coordinates
-#  theta_cs = double(xt_value)*!dpi/180. #dipole tilt is xt_value
-#  x1 = x*cos(theta_cs) + z*sin(theta_cs)
-#  y1 = y
-#  z1 = z*cos(theta_cs) - x*sin(theta_cs)
-#  rho1 = sqrt(x1^2.d + y1^2.d) #cylindrical radial distance
-
-#% RJW way
-	theta_cs = xt*Deg2Rad # % dipole tilt is xt_value
-	x1 = x*np.cos(theta_cs) + z*np.sin(theta_cs)#
-	y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
-	z1 = z*np.cos(theta_cs) - x*np.sin(theta_cs)#
-	rho1_sq = x1*x1 + y1*y1
-	rho1 = (rho1_sq)**0.5 # %cylindrical radial distance
-	mui_2 = mu_i
-
-
-#% ===========
-#% Decide whether to use integral equations or analytic equations
-#% ===========
-#  if ((abs(z1) le d_value*1.5d and abs(rho1-r0_value) le 2.d) or eq_type eq 'integral') then do_integral = 1 else do_integral = 0
-#  if eq_type eq 'analytic' then do_integral = 0
-#% RJW way - mainly for clarity
-
-	
-
-	abs_z1 = np.abs(z1)#
-	N = z1.size
-
-	do_integral=np.zeros(N,dtype='bool')
-	if equation_type == 'analytic':
-		do_integral[0:N] = False
-	elif equation_type == 'integral':
-		do_integral[0:N] = True
-	elif equation_type == 'hybrid':
-		sel_hybrid = np.where((abs_z1 <= d*1.5) & (np.abs(rho1-r0) <= 2))[0]
-		do_integral[sel_hybrid]=1
-
-
-	ind_analytic = np.where(do_integral == 0)[0]
-	ind_integral = np.where(do_integral == 1)[0]
-
-	n_ind_analytic = ind_analytic.size
-	n_ind_integral = ind_integral.size
-	
-	brho1= np.zeros(N)
-	bz1= np.zeros(N)			
+		return Brho,Bz
 
 
-	'''	
+	def _IntegralVector(self,rho,abs_z,z):
+		'''
+		Integrates the model equations for an array of input coordinates.
+		
+		Inputs
+		======
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
+		z : float
+			z coordinate (Rj)
+			
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
+		
+		#check which "zcase" we need for this vector
+		check1 = np.abs(abs_z - self.d)		
+		check2 = abs_z <= self.d*1.1
+		s = _Switcher(check1,check2)
 
- ===========
-Integral equations - Brho and Bz eqs. vary depending on region with respect to the disk
-
-lambda_max_brho = 4.#default integration limit for Brho function
-lambda_max_bz = 100.#default integration limit for Bz function
-lambda = 1e-4 #default step size for both
-dlambda_brho = 1e-4#default step size for Brho function
-dlambda_bz = e-5#default step size for Bz function
-if abs(abs(z1)-d_value) lt .7 then lambda_max_brho = 40.d #Z > D
-if abs(abs(z1)-d_value) lt .1 then lambda_max_brho = 100.d #Z very close to D
-if abs(z1) gt d_value*1.1 then lambda_max_bz = 20.d #Small Z
-lambda_int_brho = dindgen(lambda_max_brho/dlambda_brho)*dlambda_brho
-lambda_int_bz = dindgen(lambda_max_bz/dlambda_bz)*dlambda_bz
-sign_z = z1/abs(z1)
-if abs(z1) gt d_value then begin #Connerney et al. 1981 eqs. 14 and 15
-brho_int_funct = beselj(lambda_int_brho*rho1,1)*beselj(lambda_int_brho*r0_value,0)*sinh(d_value*lambda_int_brho)*exp((-1.d)*abs(z1)*lambda_int_brho)/lambda_int_brho
-brho1 = sign_z*mui_2*2.d*int_tabulated(lambda_int_brho(where(abs(brho_int_funct) lt 1e99)),brho_int_funct(where(abs(brho_int_funct) lt 1e99)))
-bz_int_funct = beselj(lambda_int_bz*rho1,0)*beselj(lambda_int_bz*r0_value,0)*sinh(d_value*lambda_int_bz)*exp((-1.d)*abs(z1)*lambda_int_bz)/lambda_int_bz
-bz1 = mui_2*2.d*int_tabulated(lambda_int_bz(where(abs(bz_int_funct) lt 1e99)),bz_int_funct(where(abs(bz_int_funct)lt 1e99)))
-endif else begin #Connerney et al. 1981 eqs. 17 and 18
-brho_int_funct = beselj(lambda_int_brho*rho1,1)*beselj(lambda_int_brho*r0_value,0)*sinh(z1*lambda_int_brho)*exp((-1.d)*d_value*lambda_int_brho)/lambda_int_brho
-brho1 = mui_2*2.d*int_tabulated(lambda_int_brho(where(abs(brho_int_funct) lt 1e99)),brho_int_funct(where(abs(brho_int_funct) lt 1e99)))
-bz_int_funct = beselj(lambda_int_bz*rho1,0)*beselj(lambda_int_bz*r0_value,0)*(1.d - cosh(z1*lambda_int_bz)*exp((-1.d)*d_value*lambda_int_bz))/lambda_int_bz
-bz1 = mui_2*2.d*int_tabulated(lambda_int_bz(where(abs(bz_int_funct) lt 1e99)),bz_int_funct(where(abs(bz_int_funct)lt 1e99)))
-endelse
-
-    #% RJW way
-	
-			'''	
-
-	if (n_ind_integral != 0):
-
-		#% lambda_max_brho = 4.0d  #% default integration limit for Brho function
-		#% lambda_max_bz   = 100d  #% default integration limit for Bz function
-		dlambda         = 1e-4  #% default step size for both
-		dlambda_brho    = 1e-4  #% default step size for Brho function
-		dlambda_bz      = 5e-5  #% default step size for Bz function
-
-
-		#%      if abs(abs_z1[ind_for_integral] - d_value) lt 0.7d then BEGIN
-		#%        if abs(abs_z1[ind_for_integral] - d_value) lt 0.1d then BEGIN
-		#%          lambda_max_brho = 100.0d #% Z very close to D
-		#%        ENDIF ELSE BEGIN
-		#%          lambda_max_brho = 40.0d #% Z > D
-		#%        ENDELSE
-		#%      ENDIF ELSE BEGIN
-		#%        lambda_max_brho = 4.0d  #% default integration limit for Brho function
-		#%      ENDELSE
-		#%      #%if (abs_z1 gt d_value*1.1d) then lambda_max_bz = 20.d else lambda_max_bz   = 100d#% Small Z or default in else
-		#%      if (abs_z1[ind_for_integral] le d_value*1.1d) then lambda_max_bz = 100d else lambda_max_bz   = 20d #% Small Z or default in else
-
-
-		check1=np.abs(abs_z1[ind_integral]-d)
-		ncheck1=(check1.size)
-		check2=np.zeros(ncheck1)
-		inside_d = np.where(abs_z1[ind_integral] < d*1.1)[0]
-		flag = not np.any(inside_d)
-		if flag == False:
-			check2[inside_d]=1
-
-		zcase=1
+		#create the output arrays for this function
+		Brho = np.zeros(np.size(rho),dtype='float64')
+		Bz = np.zeros(np.size(rho),dtype='float64')
 
 		for zcase in range(1,7):
-			s = _Switcher(check1,check2)
-			ind_case,lambda_max_brho,lambda_max_bz = s.indirect(zcase)
+			
+			ind_case,lambda_max_brho,lambda_max_bz = s.FetchCase(zcase)
 			n_ind_case=len(ind_case)
-
-			if n_ind_case >= 0:
-				lambda_int_brho = np.arange(dlambda_brho,dlambda_brho*(lambda_max_brho/dlambda_brho - 1),dlambda_brho ) 
-				lambda_int_bz = np.arange(dlambda_bz,dlambda_bz*(lambda_max_bz/dlambda_bz - 1),dlambda_bz) 
-				beselj_rho_r0_0   = jv(0,lambda_int_brho*r0)# % Only 6 sets of values
-				beselj_z_r0_0     = jv(0,lambda_int_bz*r0)# % Only 6 sets of values
+			zc = zcase - 1
+			
+			if n_ind_case > 0:
 
 				for zi in range(0,n_ind_case):
-					ind_for_integral = ind_integral[ind_case[zi]] #;% sub-indices of sub-indices!
- 
-					beselj_rho_rho1_1 = jv(1, lambda_int_brho*rho1[ind_for_integral])
-					beselj_z_rho1_0   = jv(0,lambda_int_bz *rho1[ind_for_integral] )
-					if (abs_z1[ind_for_integral] > d): #% Connerney et al. 1981 eqs. 14 and 15
-						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 *np.sinh(d*lambda_int_brho) *np.exp(-abs_z1[ind_for_integral]*lambda_int_brho)/lambda_int_brho#
-						bz_int_funct   = beselj_z_rho1_0 *beselj_z_r0_0  *np.sinh(d*lambda_int_bz  ) *np.exp(-abs_z1[ind_for_integral]*lambda_int_bz  )/lambda_int_bz  #
-						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
-						if z1[ind_for_integral] < 0:
-							brho1[ind_for_integral] = -brho1[ind_for_integral]
+					ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
+
+					beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho[ind_for_integral])
+					beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho[ind_for_integral] )
+					if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
+						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+										*np.sinh(self.d*self.lambda_int_brho[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_brho[zc]) \
+										/self.lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
+										*np.sinh(self.d*self.lambda_int_bz[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_bz[zc]) \
+										/self.lambda_int_bz[zc]
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+						if z[ind_for_integral] < 0:
+							Brho[ind_for_integral] = -Brho[ind_for_integral]
 					else:
-						brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0*(np.sinh(z1[ind_for_integral]*lambda_int_brho)*np.exp(-d*lambda_int_brho))/lambda_int_brho#
-						bz_int_funct   = beselj_z_rho1_0  *beselj_z_r0_0  *(1.0 -np.cosh(z1[ind_for_integral]*lambda_int_bz  )*np.exp(-d*lambda_int_bz  ))/lambda_int_bz  #
-						brho1[ind_for_integral] = mui_2*2.0*np.trapz(brho_int_funct,lambda_int_brho)#
-					bz1[ind_for_integral]   = mui_2*2.0*np.trapz(bz_int_funct,lambda_int_bz)
-					
+						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
+										*(np.sinh(z[ind_for_integral]*self.lambda_int_brho[zc]) \
+										*np.exp(-self.d*self.lambda_int_brho[zc])) \
+										/self.lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
+										*(1.0 -np.cosh(z[ind_for_integral]*self.lambda_int_bz[zc]) \
+										*np.exp(-self.d*self.lambda_int_bz[zc])) \
+										/self.lambda_int_bz[zc]  
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+		
+		return Brho,Bz			
 	
 			
+		
+	def _Integral(self,rho,abs_z,z):
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		by integrating equations 14, 15, 17 and 18 of Connerney et al
+		1981.
+		
+		Inputs
+		======
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
+		z : float
+			z coordinate (Rj)
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
 
-	'''
-===========
- Analytic equations
-===========
-Connerney et al. 1981's equations for the field produced by a semi-infinite disk of thickness D, inner edge R0, outer edge R1 -
-see their equations A1 through A9
-the analytic equations for Brho and Bz vary depending on the region with respect to the current disk
-if rho1 lt r0_value then begin
-f1 = sqrt((z1-d_value)^2.d +r0_value^2.d)
-f2 = sqrt((z1+d_value)^2.d +r0_value^2.d)
-brho1 = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz1 = mui_2*(2.d*d_value*(z1^2. +r0_value^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-endif else if abs(z1) gt d_value then begin
- f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*d_value*z1/abs(z1)) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endif else begin
-f1 = sqrt((z1-d_value)^2.d +rho1^2.d)
-f2 = sqrt((z1+d_value)^2.d +rho1^2.d)
-brho1 = mui_2*((1.d/rho1)*(f1-f2+2.d*z1) - ((r0_value^2.d)*rho1/4.d)*((1.d/f1^3.d)-(1.d/f2^3.d)))
-bz1 = mui_2*(2.d*d_value/sqrt(z1^2.d +rho1^2.d) - ((r0_value^2.d)/4.d)*(((z1-d_value)/f1^3.d)-((z1+d_value)/f2^3.d)))
-endelse
+		if np.size(rho) == 1:
+			#scalar version of the code
+			Brho,Bz = self._IntegralScalar(rho,abs_z,z)
+		else:
+			#vectorized version
+			Brho,Bz = self._IntegralVector(rho,abs_z,z)
+		
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz		
+		
+		
+	def _Hybrid(self,rho,abs_z,z):
+		'''		
+		Calculate the magnetic field associated with the current sheet
+		by using a combination of analytical equations and numerical
+		integration.
+		
+		Inputs
+		======
+		rho : float
+			rho coordinate (Rj).
+		abs_z : float
+			absolute value of the z coordinate (Rj)
+		z : float
+			z coordinate (Rj)
+		
+		Returns
+		=======
+		Brho : float
+			rho-component of the magnetic field.
+		Bphi : float
+			phi-component of the magnetic field.
+		Bz : float
+			z-component of the magnetic field.
+		
+		'''		
 
 
-RJW way
-Doing these 3 equations on the whole array to save getting confused by indices,  Will swap to just required indices later
-	'''
-	
-	if (n_ind_analytic != 0):
-		z1pd = z1+d;
-		z1md = z1-d
-
-		ind_LT = np.where((rho1 < r0) & (do_integral == 0))[0]
-		ind_GE = np.where((rho1 > r0) & (do_integral == 0))[0]
-
-		n_ind_LT = ind_LT.size
-		n_ind_GE = ind_GE.size
-
-
-
-		if (n_ind_LT != 0): 
-			f1 = np.sqrt(z1md[ind_LT]*z1md[ind_LT] +r0**2)
-			f2 =np.sqrt(z1pd[ind_LT]*z1pd[ind_LT] +r0**2)
-			f1_cubed = f1**3
-			f2_cubed = f2**3
-			brho1[ind_LT] = mui_2*(rho1[ind_LT]/2)*((1/f1)-(1/f2))
-			bz1[ind_LT] = mui_2*(2*d*(1/np.sqrt(z1[ind_LT]*z1[ind_LT] +r0**2)) - ((rho1_sq[ind_LT])/4)*((z1md[ind_LT]/f1**3) - (z1pd[ind_LT]/f2**3)))
-
-		if (n_ind_GE != 0):
-			f1 = np.sqrt(z1md[ind_GE]*z1md[ind_GE] +rho1_sq[ind_GE])
-			f2 = np.sqrt(z1pd[ind_GE]*z1pd[ind_GE] +rho1_sq[ind_GE])
-			f1_cubed = f1**3
-			f2_cubed = f2**3
-			bz1[ind_GE] = mui_2 *(2*d/np.sqrt(z1[ind_GE]*z1[ind_GE] +rho1_sq[ind_GE])-(r0**2/4)*((z1md[ind_GE]/f1**3)-(z1pd[ind_GE]/f2**3)))
-
-			ind2_LT = np.where(abs_z1[ind_GE] > d)[0]
-			ind2_GE = np.where(abs_z1[ind_GE] < d)[0]
-
-			n_ind2_LT = ind2_LT.size
-			n_ind2_GE = ind2_GE.size
+		if np.size(rho) == 1:
+			#do the scalar version
 			
+			#check if we need to integrate numerically, or use analytical equations
+			if (abs_z <= self.d*1.5) and (np.abs(rho - self.r0) <= 2.0):
+				#use integration
+				Brho,Bz = self._IntegralScalar(rho,abs_z,z)
+			else:
+				#analytical
+				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+
+		else:
+			#this would be the vectorized version
+			n = np.size(rho)
+			Brho = np.zeros(n,dtype='float64')
+			Bz = np.zeros(n,dtype='float64')
+
+			doint = (abs_z <= self.d*1.5) & (np.abs(rho-self.r0) <= 2)
+			Iint = np.where(doint)[0]
+			Iana = np.where(doint == False)[0]
 			
-			if (n_ind2_LT != 0):
-				ind3 = ind_GE[ind2_LT]
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_LT]-f2[ind2_LT]+2*d*z1[ind3]/abs_z1[ind3])  - (r0**2 *rho1[ind3]/4) *((1/f1[ind2_LT]**3)-(1/f2[ind2_LT]**3)))
-			   
-			if (n_ind2_GE != 0):
-				ind3 = ind_GE[ind2_GE];
-				brho1[ind3] = mui_2*((1/rho1[ind3])*(f1[ind2_GE]-f2[ind2_GE]+2*z1[ind3])- (r0**2*rho1[ind3]/4)*((1/f1[ind2_GE]**3)-(1/f2[ind2_GE]**3)));
-
-	'''
- =======
- New to CAN2020 (not included in CAN1981): radial current produces an azimuthal field, so Bphi is nonzero
- =======
- bphi1 = 2.7975d*i_rho_value/rho1
- if abs(z1) lt d_value then bphi1 = bphi1*abs(z1)/d_value
- if z1 gt 0.d then bphi1 = (-1.d)*bphi1
-#% RJW way
-	'''
- 
-	bphi1 = 2.7975*i_rho/rho1
-
-	ind = np.where(abs_z1 < d)[0]
-	sized = ind.size
-	if sized != 0:
-		bphi1[ind] =  bphi1[ind] * abs_z1[ind] / d
-
-	ind = np.where(z1 > 0.0)[0]
-	sized = ind.size
-	if sized != 0:
-		bphi1[ind] =  -bphi1[ind] 
-	
-	'''
-=====================
-Account for finite nature of current sheet by subtracting the field values (using small rho approximation for a semi-infinite sheet)
-with a (inner edge) = r1 (= 51.4 Rj by default in CAN2020) following Edwards et al.
-Note that the Connerney et al. 1981 paper (and equations in the Dessler book) mentions a different approximation, which is simply
- subtracting 0.1*mu0i0/2 from Bz - and leaves Br unchanged (see Connerney et al. 1981 Figure 4).
-a1 = r1_value #outer edge
-f1 = sqrt((z1-d_value)^2.d +a1^2.d)
-f2 = sqrt((z1+d_value)^2.d +a1^2.d)
-brho_finite = mui_2*(rho1/2.d)*((1.d/f1)-(1.d/f2))
-bz_finite = mui_2*(2.d*d_value*(z1^2. +a1^2.d)^(-0.5d) - ((rho1^2.d)/4.d)*(((z1-d_value)/(f1^3.d)) - ((z1+d_value)/f2^3.d)))
-brho1 = brho1 - brho_finite
-bphi_finite = (-1.d)*(brho_finite/mui_2)*i_rho_value
-bz1 = bz1 - bz_finite
-
-RJW way
-a1 = r1_value #% outer edge
-a1_sq = a1*a1# % outer edge squared
-
-	'''
-	z1md = z1-d
-	z1pd = z1+d
-	f1 = np.sqrt(z1md**2 +r1**2)
-	f2 = np.sqrt(z1pd**2 +r1**2)
-
-	brho_finite = mui_2*(rho1/2)*((1/f1)-(1/f2))
-	bz_finite   = mui_2*(2*d*(1/np.sqrt(z1**2+r1**2)) - ((rho1**2)/4)*((z1md/(f1**3)) - (z1pd/(f2**3))))
-	brho1       = brho1 - brho_finite
-	bphi_finite = -i_rho * brho_finite/mui_2#
-	bz1         = bz1 - bz_finite#
+			if Iint.size > 0:
+				Brho[Iint],Bz[Iint] = self._IntegralVector(rho[Iint],abs_z[Iint],z[Iint])
+			
+			if Iana.size > 0:
+				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
 
 
+		#calculate Bphi
+		Bphi = self._Bphi(rho,abs_z,z)
+		
+		#subtract outer edge contribution
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
+		Brho -= Brho_fin
+		#Bphi -= Bphi_fin
+		Bz -= Bz_fin
+		
+		return Brho,Bphi,Bz		
+				
+		
+				
+	def Field(self,in0,in1,in2):
+		'''
+		Return the magnetic field vector(s) for a given input position
+		in right-handed System III coordinates.
+		
+		Inputs
+		======
+		in0 : float
+			First input coordinate(s) - x or r (in Rj).
+		in1 : float
+			Second input coordinate(s) - y (in Rj) or theta (in rad).
+		in2 : float
+			Third input coordinate(s) - z (in Rj) or phi (in rad).
+			
+		Whether or not the input coordinates are treated as Cartesian or
+		spherical polar depends upon how the model was initialized with
+		the "CartesianIn" keyword.
+		
+		e.g.:
+		# for Cartesian input coordinates:
+		B = Model.Field(x,y,z)
+		
+		#or spherical polar coordinates:
+		B = Model.Field(r,theta,phi)
+		
+		Returns
+		=======
+		B : float
+			(n,3) shaped array containing the magnetic field vectors in
+			either Cartesian SIII coordinates or spherical polar ones,
+			depending upon how the model was initialized, where "n" is
+			the number of elements contained in the input arguments.
+		'''
+		
+		#rotate and check input SIII coordinates to current sheet coords
+		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
+			
+		#create the output arrays
+		n = np.size(rho)
+		Bout = np.zeros((n,3),dtype='float64')
+		
+		#Brho = np.zeros(n,dtype='float64')
+		#Bphi = np.zeros(n,dtype='float64')
+		#Bz = np.zeros(n,dtype='float64')
+			
+		#call the model function
+		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
+		
+		
+		#return to SIII coordinates
+		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
+		
+		#turn into a nx3 array
+		Bout[:,0] = B0
+		Bout[:,1] = B1
+		Bout[:,2] = B2
 
-	'''
-brho1, bphi1, and bz1 here are the ultimately calculated brho and bz values from the CAN model
-the remaining calculations just rotate the field back into SIII
-Calculate 'magnetic longitude' and convert the field into cartesian coordinates
-phi1     = atan(y1,x1)#
-cos_phi1 = cos(phi1)#
-sin_phi1 = sin(phi1)#
-The above three commands is really a cos(atan(y1,x1)) and a sin(atan(y1,x1)).  This simplifies
-	'''
-
-	cos_phi1 = x1/rho1 #% cos(atan(y1,x1)) see https://www.wolframalpha.com/input/?i=cos%28atan2%28y%2Cx%29%29
-	sin_phi1 = y1/rho1 #% sin(atan(y1,x1)) see https://www.wolframalpha.com/input/?i=sin%28atan2%28y%2Cx%29%29
-	
-	bx1 = brho1*cos_phi1 - bphi1*sin_phi1 # % lines above were used for CAN1981, but since Bphi != 0 in CAN 2020 this is updated here
-	by1 = brho1*sin_phi1 + bphi1*cos_phi1 #
-
-	'''
-Rotate back by dipole tilt amount, into coordinate system that is aligned with Jupiter's spin axis
-bx = bx1*cos(theta_cs) - bz1*sin(theta_cs)
-by = by1
-bz = bx1*sin(theta_cs) + bz1*cos(theta_cs)
-RJW way
-	'''
-
-	cos_theta_cs = np.cos(theta_cs)#
-	sin_theta_cs =  np.sin(theta_cs)#
-	bx = bx1*cos_theta_cs - bz1*sin_theta_cs#
-	bz = bx1*sin_theta_cs + bz1*cos_theta_cs#
-
-
-#% Finally, shift back to SIII longitude
-
-	cos_xp = np.cos(dipole_shift) #% cos(xp_value*Deg2Rad)#
-	sin_xp = np.sin(dipole_shift) #% sin(xp_value*Deg2Rad)#
-	bx2 = bx*cos_xp - by1*sin_xp# % used sin(-a) = asin(a) & cos(-a) = cos(a)
-	by2 = by1*cos_xp + bx*sin_xp#
-
-	'''
-return, [[bx2],[by2],[bz]]#% Exit here if we want output in Cartesian, not Spherical
-Convert to spherical coordinates
-bx = bx2#
-by = by2#
-br =  bx*sin_theta*cos_phi+by*sin_theta*sin_phi+bz*cos_theta#
-bt =  bx*cos_theta*cos_phi+by*cos_theta*sin_phi-bz*sin_theta#
-bp = -bx*          sin_phi+by*          cos_phi#
-	'''
-
-	if Cartesian:
-		return bx2,by2,bz
-
-	br =  bx2*sin_theta*cos_phi+by2*sin_theta*sin_phi+bz*cos_theta#
-	bt =  bx2*cos_theta*cos_phi+by2*cos_theta*sin_phi-bz*sin_theta#
-	bp = -bx2*          sin_phi+by2*          cos_phi#
-
-	return br,bt,bp
+		return Bout
