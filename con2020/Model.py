@@ -24,6 +24,11 @@ class Model(object):
 			mu0i0/2 term (current sheet current density), in nT
 		i_rho__azimuthal_current_density_nT (i_rho) : float
 			azimuthal current term from Connerney et al., 2020
+			NOTE: The default value (139.6 nT) is the average value from 
+			Table 1 of Connerney et al 2020. This value was shown to 
+			vary from one pass to the next, where Table 2 provides 
+			radial current density values for 23 of the first 24
+			perijoves.
 		r0__inner_rj (r0) : float
 			Inner edge of current disk in Rj
 		r1__outer_rj (r1) : float
