@@ -49,7 +49,6 @@ setuptools.setup(
 		'numpy',
 		'scipy',
 		'matplotlib',
-		'DateTimeTools>=0.2.3',
 	],
 	include_package_data=True,
 )

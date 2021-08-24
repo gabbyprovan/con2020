@@ -347,6 +347,34 @@ def TestTimingIntVsAnSingle(n=1000):
 	ta1 = time.time()
 	print('Completed in {:f}s'.format(ta1-ta0))
 	
+def _ConvertTime(year,dayno):
+	'''
+	This will convert year and day number to date (yyyymmdd) and ut in
+	hours since the start of the day. Also will provide a continuous 
+	time axis.
+	
+	'''
+	try:
+		import DateTimeTools as TT
+	except:
+		print('Install DateTimeTools package to use this function:')
+		print('pip3 install DateTimeTools --user')
+		
+	#get the dayno as an integer
+	dn = np.int32(np.floor(dayno))
+	
+	#the date
+	Date = TT.DayNotoDate(year,dn)
+	
+	#time
+	ut = (dayno % 1.0)*24.0
+	
+	#continuous time (for plotting)
+	utc = TT.ContUT(Date,ut)
+	
+	return Date,ut,utc
+	
+	
 def Dump(n = 5):
 	import PyFileIO as pf
 	
