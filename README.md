@@ -1,6 +1,6 @@
 # con2020
 
-Description of the model here
+Python implementation of the Connerney et al., 1981 and Connerney et al., 2020 Jovian magnetodisc model. This model provides the magnetic field due to a "washer-shaped" current near to Jupiter's magnetic equator. By default, this model code uses either analytical equations from Edwards et al., 2001 or the numerical integration of the Connerney et al., 1981 equations to provide the magnetodisc field, depending upon proximity to the disc along _z_ and the inner edge of the disc, _r<sub>0</sub>_.
 
 ## Installation
 
@@ -67,8 +67,8 @@ The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the numb
 
 | Keyword (long)                            | Keyword (short) | Default Value | Description                                                  |
 | ----------------------------------------- | --------------- | ------------- | ------------------------------------------------------------ |
-| `mu_i_div2__current_density_nT`           | `mu_i`          | `139.6`       | Current sheet current density in nT.                         |
-| `i_rho__azimuthal_current_density_nT`     | `i_rho`         | `16.7`        | Azimuthal current density in nT from Connerney et al 2020.   |
+| `mu_i_div2__current_density_nT`           | `mu_i`          | `139.6`*      | Current sheet current density in nT.                         |
+| `i_rho__azimuthal_current_density_nT`     | `i_rho`         | `16.7`*       | Azimuthal current density in nT from Connerney et al 2020.   |
 | `r0__inner_rj`                            | `r0`            | `7.8`         | Inner edge of the current sheet in R<sub>j</sub>.            |
 | `r1__outer_rj`                            | `r1`            | `51.4`        | Outer edge of the current sheet in R<sub>j</sub>.            |
 | `d__cs_half_thickness_rj`                 | `d`             | `3.6`         | Current sheet half thickness in R<sub>j</sub>.               |
@@ -79,6 +79,8 @@ The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the numb
 | `CartesianIn`                             |                 | `True`        | If `True` (default) then the input coordinates are expected to be in Cartesian right-handed SIII coordinates. If `False` then right-handed spherical polar SIII coordinates will be expected. |
 | `CartesianOut`                            |                 | `True`        | If `True` the output magnetic field components will be in right-handed Cartesian SIII coordinates. If `False` then the output will be such that it has radial, meridional and azimuthal components. |
 | `Edwards`                                 |                 | `True`        | If `True` (default) then the Edwards et al 2001 divergence-free equations are used for the analytical model. If `False` then the original equations of Connerney et al 1981 will be used. |
+
+*Default current densities used here are averages provided in Connerney et al., 2020 (see Figure 6), but can vary from one pass to the next. Table 2 of Connerney et al., 2020 provides a list of both current densities for 23 out of the first 24 perijoves of Juno.
 
 The `con2020.Test()` function should produce the following:
 
