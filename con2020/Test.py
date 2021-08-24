@@ -2,61 +2,48 @@ import numpy as np
 from scipy.io.idl import readsav
 import matplotlib.pyplot as plt
 import os
-import DateTimeTools as TT
 from .Model import Model
-from .OldModel import OldModel
 import time
 
-def _ConvertTime(year,dayno):
+def _RCrossings(doy,r,r0,r1):
 	'''
-	This will convert year and day number to date (yyyymmdd) and ut in
-	hours since the start of the day. Also will provide a continuous 
-	time axis.
+	Return the day numbers where r0 and r1 were crossed.
 	
-	'''
-	#get the dayno as an integer
-	dn = np.int32(np.floor(dayno))
-	
-	#the date
-	Date = TT.DayNotoDate(year,dn)
-	
-	#time
-	ut = (dayno % 1.0)*24.0
-	
-	#continuous time (for plotting)
-	utc = TT.ContUT(Date,ut)
-	
-	return Date,ut,utc
-
-def _PlotComponent(t,x,xa,xh,xi,maps=[1,1,0,0],Comp='',nox=False):
-	'''
-	Plot a single component in a panel
+	Inputs
+	======
+	doy : float
+		Day number array.
+	r : float
+		Array of R.
+	r0 : float
+		Inside edge of the current.
+	r0 : float 
+		Outside edge of the current.
+		
+	Returns
+	=======
+	dc : float
+		Day numbers of the r0/r1 crossings.
 	
 	'''
 	
-	#create the subplot
-	ax = plt.subplot2grid((maps[1],maps[0]),(maps[3],maps[2]))
+	rc0 = ((r[1:] >= r0) & (r[:-1] < r0)) | ((r[:-1] >= r0) & (r[1:] < r0))
+	rc1 = ((r[1:] >= r1) & (r[:-1] < r1)) | ((r[:-1] >= r1) & (r[1:] < r1))
+	rc0 = np.where(rc0)[0]
+	rc1 = np.where(rc1)[0]
+	rc = np.append(rc0,rc1)
+	rc.sort()
 	
-	ax.plot(t,x,color='black',label=Comp+' (This Model)',zorder=1.0)
-	ax.plot(t,xa,linestyle=':',color='red',label=Comp+' (Con2020 Analytical)',zorder=1.0)
-	ax.plot(t,xi,linestyle=':',color='darkorange',label=Comp+' (Con2020 Integral)',zorder=1.0)
-	ax.plot(t,xh,linestyle=':',color='darkgoldenrod',label=Comp+' (Con2020 Hybrid)',zorder=1.0)
+	dc = 0.5*(doy[rc] + doy[rc+1])
 	
-	ax.legend()
-	ax.set_ylabel(Comp)
+	return dc
 	
-	if nox:
-		ax.set_xticks([])
-	else:
-		TT.DTPlotLabel(ax)
-		ax.set_xlabel('UT')
 	
-	return ax
-
+	
+	
 def Test(Edwards=True):
 	'''
-	Run a quick test to see if the model works - this file might either
-	be removed from __init__ or removed completely at some point.
+	Run a quick test to see if the model works.
 	
 	'''
 	# this is the path of this source file
@@ -73,13 +60,15 @@ def Test(Edwards=True):
 	year = data.time_year[0]
 	dayno = data.time_ddate[0]
 	
-	#convert to another time format
-	Date,ut,utc = _ConvertTime(year,dayno)
+	#limit the dayno
+	use = np.where((dayno >= 290) & (dayno <= 315))[0]
+	year = year[use]
+	dayno = dayno[use]
 	
 	#and the model inputs (positions)
-	r = data.r[0]
-	theta = data.SYS3_COLAT_RADS[0]
-	phi = data.SYS3_ELONG_RADS[0]
+	r = data.r[0][use]
+	theta = data.SYS3_COLAT_RADS[0][use]
+	phi = data.SYS3_ELONG_RADS[0][use]
 	
 	#model fields to test against
 	con20_analytic= data.CS_FIELD_ANALYTIC[0]
@@ -88,22 +77,63 @@ def Test(Edwards=True):
 
 	#call the model code
 	print('Calling Model')
-	Br,Bt,Bp = OldModel(r,theta,phi,Edwards=Edwards)
-	print('Calling new code')
-	M = Model(Edwards=Edwards,CartesianIn=False,CartesianOut=False)
+	M = Model(Edwards=Edwards,CartesianIn=False,CartesianOut=False,mu_i=149.9)
 	B = M.Field(r,theta,phi)
-	#create a plot
+	
+	#get the r0/r1 crossings
+	dc = _RCrossings(dayno,r,M.r0,M.r1)
+
+	#create a plot window
 	plt.figure(figsize=(11,8))
 	
-	ax0 = _PlotComponent(utc,Br,con20_analytic[0],con20_hybrid[0],
-			con20_integral[0],maps=[1,3,0,0],Comp=r'$B_{r}$ (nT)',nox=True)
-	ax1 = _PlotComponent(utc,Bt,con20_analytic[1],con20_hybrid[1],
-			con20_integral[1],maps=[1,3,0,1],Comp=r'$B_{\theta}$ (nT)',nox=True)
-	ax2 = _PlotComponent(utc,Bp,con20_analytic[2],con20_hybrid[2],
-			con20_integral[2],maps=[1,3,0,2],Comp=r'$B_{\phi}$ (nT)',nox=False)
-	ax0.plot(utc,B[:,0],color='magenta',label=r'$B_{r}$ (nT) New Code')
-	ax1.plot(utc,B[:,1],color='magenta',label=r'$B_{\theta}$ (nT) New Code')
-	ax2.plot(utc,B[:,2],color='magenta',label=r'$B_{\phi}$ (nT) New Code')
+	#create the subplots
+	ax0 = plt.subplot2grid((4,1),(0,0))
+	ax1 = plt.subplot2grid((4,1),(1,0))
+	ax2 = plt.subplot2grid((4,1),(2,0))
+	ax3 = plt.subplot2grid((4,1),(3,0))
+	
+	#plot each component
+	ax0.plot(dayno,B[:,0],color='k',label=r'$B_{r}$ (nT)')
+	ax1.plot(dayno,B[:,1],color='k',label=r'$B_{\theta}$ (nT)')
+	ax2.plot(dayno,B[:,2],color='k',label=r'$B_{\phi}$')
+	ax3.plot(dayno,r,color='k',label=r'$r$')
+	
+	#fix y limits
+	y0 = ax0.get_ylim()
+	y1 = ax1.get_ylim()
+	y2 = ax2.get_ylim()
+	y3 = ax3.get_ylim()
+	ax0.set_ylim(y0)
+	ax1.set_ylim(y1)
+	ax2.set_ylim(y2)
+	ax3.set_ylim(y3)
+	
+	#and x limits
+	ax0.set_xlim([290,315])
+	ax1.set_xlim([290,315])
+	ax2.set_xlim([290,315])
+	ax3.set_xlim([290,315])
+	
+	#plot r0/r1 crossings
+	ax0.vlines(dc,y0[0],y0[1],color='k',linestyle='--')
+	ax1.vlines(dc,y1[0],y1[1],color='k',linestyle='--')
+	ax2.vlines(dc,y2[0],y2[1],color='k',linestyle='--')
+	ax3.vlines(dc,y3[0],y3[1],color='k',linestyle='--')
+	
+	#y labels plot labels
+	ax0.set_ylabel(r'$B_r$ / nT')
+	ax1.set_ylabel(r'$B_{\theta}$ / nT')
+	ax2.set_ylabel(r'$B_{\phi}$ / nT')
+	ax3.set_ylabel(r'$r$ / R$_J$')
+
+	#title
+	ax0.set_title(r'PJ16, con2020: $\mu_0I_{MD}/2$=' + '{:5.1f}, $R_0$={:3.1f} R$_J$, $R_1$={:4.1f} R$_J$'.format(M.i_rho,M.r0,M.r1))
+	
+	#x labels
+	ax0.set_xticks([])
+	ax1.set_xticks([])
+	ax2.set_xticks([])
+	ax3.set_xlabel('DOY (2018)')
 	
 	plt.subplots_adjust(hspace=0.0)
 
@@ -126,104 +156,80 @@ def TestCompareAnalytic():
 	year = data.time_year[0]
 	dayno = data.time_ddate[0]
 	
-	#convert to another time format
-	Date,ut,utc = _ConvertTime(year,dayno)
+	#limit the dayno
+	use = np.where((dayno >= 290) & (dayno <= 315))[0]
+	year = year[use]
+	dayno = dayno[use]
 	
 	#and the model inputs (positions)
-	r = data.r[0]
-	theta = data.SYS3_COLAT_RADS[0]
-	phi = data.SYS3_ELONG_RADS[0]
-
-	#convert coordinates to get rho
-	xt = 9.3
-	xp = -24.2
-	Deg2Rad = np.pi/180.0
-	sin_theta = np.sin(theta)#
-	cos_theta = np.cos(theta)#
-	sin_phi   = np.sin(phi)#
-	cos_phi   = np.cos(phi)#
-
-	dipole_shift = xp*Deg2Rad # % xp_value is longitude of the dipole
-	x = r*sin_theta*np.cos(phi-dipole_shift)
-	y = r*sin_theta*np.sin(phi-dipole_shift)
-	z = r*cos_theta#]
-
-	theta_cs = xt*Deg2Rad # % dipole tilt is xt_value
-	x1 = x*np.cos(theta_cs) + z*np.sin(theta_cs)#
-	y1 = y# RJW - NOT NEEDED REALLY - BUT USED IN ATAN LATER
-	z1 = z*np.cos(theta_cs) - x*np.sin(theta_cs)#
-	rho1_sq = x1*x1 + y1*y1
-	rho = np.sqrt(rho1_sq)
-		
-	#find where we cross each boundary
-	r0 = 7.8
-	r1 = 51.4
-
-	rg0 = rho > r0
-	rl0 = rho < r0
-	u0 = np.where((rg0[1:] & rl0[:-1]) | (rg0[:-1] & rl0[1:]))[0]
-	  
-	rg1 = rho > r1
-	rl1 = rho < r1
-	u1 = np.where((rg1[1:] & rl1[:-1]) | (rg1[:-1] & rl1[1:]))[0]
-	  
-	utcr0 = 0.5*(utc[u0] + utc[u0+1])
-	utcr1 = 0.5*(utc[u1] + utc[u1+1])
+	r = data.r[0][use]
+	theta = data.SYS3_COLAT_RADS[0][use]
+	phi = data.SYS3_ELONG_RADS[0][use]
 	
-	#model fields to test against
-	con20_analytic= data.CS_FIELD_ANALYTIC[0]
-	con20_hybrid=  data.CS_FIELD_HYBRID[0]
-	con20_integral= data.CS_FIELD_INTEGRAL[0]
-
 	#call the model code
 	print('Calling Model')
-	Bro,Bto,Bpo = Model(r,theta,phi,Edwards=False,equation_type='analytic')
-	Bre,Bte,Bpe = Model(r,theta,phi,Edwards=True,equation_type='analytic')
-	Bri,Bti,Bpi = Model(r,theta,phi,Edwards=False,equation_type='hybrid')
+	Me = Model(Edwards=True,CartesianIn=False,CartesianOut=False,equation_type='analytic')
+	Mo = Model(Edwards=False,CartesianIn=False,CartesianOut=False,equation_type='analytic')
+	Be = Me.Field(r,theta,phi)
+	Bo = Mo.Field(r,theta,phi)
+	
+	#get the r0/r1 crossings
+	dc = _RCrossings(dayno,r,Me.r0,Me.r1)
 
-	#create a plot
+
+	#create a plot window
 	plt.figure(figsize=(11,8))
-	ax0 = plt.subplot2grid((3,1),(0,0))
-	ax0.plot(utc,Bro,color='black',label='Connerney',zorder=1)
-	ax0.plot(utc,Bre,color='red',linestyle='--',label=r'Edwards',zorder=3)
-	ax0.plot(utc,Bri,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
 	
-	ax1 = plt.subplot2grid((3,1),(1,0))
-	ax1.plot(utc,Bto,color='black',label='Connerney',zorder=1)
-	ax1.plot(utc,Bte,color='red',linestyle='--',label='Edwards',zorder=3)
-	ax1.plot(utc,Bti,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
+	#create the subplots
+	ax0 = plt.subplot2grid((4,1),(0,0))
+	ax1 = plt.subplot2grid((4,1),(1,0))
+	ax2 = plt.subplot2grid((4,1),(2,0))
+	ax3 = plt.subplot2grid((4,1),(3,0))
 	
-	ax2 = plt.subplot2grid((3,1),(2,0))
-	ax2.plot(utc,Bpo,color='black',label='Connerney',zorder=1)
-	ax2.plot(utc,Bpe,color='red',linestyle='--',label='Edwards',zorder=3)
-	ax2.plot(utc,Bpi,color='lime',linestyle='--',label=r'Hybrid',zorder=2)
+	#plot each component
+	ax0.plot(dayno,Be[:,0],color='k',label=r'$B_{r}$ (nT) (Edwards)')
+	ax1.plot(dayno,Be[:,1],color='k',label=r'$B_{\theta}$ (nT) (Edwards)')
+	ax2.plot(dayno,Be[:,2],color='k',label=r'$B_{\phi}$ (nT) (Edwards)')
+	ax0.plot(dayno,Bo[:,0],color='r',label=r'$B_{r}$ (nT) (Connerney)')
+	ax1.plot(dayno,Bo[:,1],color='r',label=r'$B_{\theta}$ (nT) (Connerney)')
+	ax2.plot(dayno,Bo[:,2],color='r',label=r'$B_{\phi}$ (nT) (Connerney)')
+	ax3.plot(dayno,r,color='k',label=r'$r$')
 	
-	#add lines indicating crossing r0 and r1
+	#fix y limits
 	y0 = ax0.get_ylim()
-	ax0.set_ylim(y0)
 	y1 = ax1.get_ylim()
-	ax1.set_ylim(y1)
 	y2 = ax2.get_ylim()
+	y3 = ax3.get_ylim()
+	ax0.set_ylim(y0)
+	ax1.set_ylim(y1)
 	ax2.set_ylim(y2)
-
-	ax0.vlines(utcr0,y0[0],y0[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
-	ax0.vlines(utcr1,y0[0],y0[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
-
-	ax1.vlines(utcr0,y1[0],y1[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
-	ax1.vlines(utcr1,y1[0],y1[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
-
-	ax2.vlines(utcr0,y2[0],y2[1],color='magenta',linestyle=':',label='$r_0$',zorder=4)
-	ax2.vlines(utcr1,y2[0],y2[1],color='magenta',linestyle='--',label='$r_1$',zorder=4)
-
-	ax0.set_ylabel(r'$B_{r}$ (nT)')
-	ax1.set_ylabel(r'$B_{\theta}$ (nT)')
-	ax2.set_ylabel(r'$B_{\phi}$ (nT)')
-
+	ax3.set_ylim(y3)
 	
+	#and x limits
+	ax0.set_xlim([290,315])
+	ax1.set_xlim([290,315])
+	ax2.set_xlim([290,315])
+	ax3.set_xlim([290,315])
+	
+	#plot r0/r1 crossings
+	ax0.vlines(dc,y0[0],y0[1],color='k',linestyle='--')
+	ax1.vlines(dc,y1[0],y1[1],color='k',linestyle='--')
+	ax2.vlines(dc,y2[0],y2[1],color='k',linestyle='--')
+	ax3.vlines(dc,y3[0],y3[1],color='k',linestyle='--')
+	
+	#y labels plot labels
+	ax0.set_ylabel(r'$B_r$ / nT')
+	ax1.set_ylabel(r'$B_{\theta}$ / nT')
+	ax2.set_ylabel(r'$B_{\phi}$ / nT')
+	ax3.set_ylabel(r'$r$ / R$_J$')
+
+	#x labels
 	ax0.set_xticks([])
 	ax1.set_xticks([])
-	TT.DTPlotLabel(ax2)
-	ax2.set_xlabel('UT')
+	ax2.set_xticks([])
+	ax3.set_xlabel('DOY (2018)')
+	
+	#legends
 	ax0.legend()
 	ax1.legend()
 	ax2.legend()
@@ -271,19 +277,7 @@ def TestTimingIntVsAn(n=1000):
 	phi = data.SYS3_ELONG_RADS[0][:n]
 	
 	print('Testing {:d} model vectors'.format(n))
-	#call the model code
-	print('Calling Old Integral Model')
-	ti0 = time.time()
-	Br,Bt,Bp = OldModel(r,theta,phi,equation_type='integral')
-	ti1 = time.time()
-	print('Completed in {:f}s'.format(ti1-ti0))
-	
-	print('Calling Old Analytic Model')
-	ta0 = time.time()
-	Br,Bt,Bp = OldModel(r,theta,phi,equation_type='analytic')
-	ta1 = time.time()
-	print('Completed in {:f}s'.format(ta1-ta0))
-	
+
 	#call the model code
 	print('Calling Integral Model')
 	ti0 = time.time()
@@ -337,21 +331,7 @@ def TestTimingIntVsAnSingle(n=1000):
 	MA = Model(equation_type='analytic',CartesianIn=False,CartesianOut=False)
 	
 	print('Testing {:d} model vectors'.format(n))
-	#call the model code
-	print('Calling Old Integral Model')
-	ti0 = time.time()
-	for i in range(0,n):
-		Br,Bt,Bp = OldModel(r[i],theta[i],phi[i],equation_type='integral')
-	ti1 = time.time()
-	print('Completed in {:f}s'.format(ti1-ti0))
-	
-	print('Calling Old Analytic Model')
-	ta0 = time.time()
-	for i in range(0,n):
-		Br,Bt,Bp = OldModel(r[i],theta[i],phi[i],equation_type='analytic')
-	ta1 = time.time()
-	print('Completed in {:f}s'.format(ta1-ta0))
-	
+
 	#call the model code
 	print('Calling Integral Model')
 	ti0 = time.time()
@@ -400,7 +380,9 @@ def Dump(n = 5):
 
 	#call the model code
 	print('Calling Model')
-	Br,Bt,Bp = Model(r,theta,phi,Edwards=True,equation_type='hybrid')
+	Me = Model(Edwards=True,CartesianIn=False,CartesianOut=False)
+	B = Model(r,theta,phi)
+	
 	
 	#output
 	dtype = [	('Date','int32'),
@@ -418,9 +400,9 @@ def Dump(n = 5):
 	out.r = r
 	out.t = theta
 	out.p = phi
-	out.Br = Br
-	out.Bt = Bt
-	out.Bp = Bp
+	out.Br = B[:,0]
+	out.Bt = B[:,1]
+	out.Bp = B[:,2]
 	
 	#dump it to a file in the home directory
 	pf.WriteASCIIData('con2020dump.dat',out)
