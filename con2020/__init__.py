@@ -1,4 +1,4 @@
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 from ._Switcher import _Switcher
 from .Test import Test,TestTimingIntVsAn,TestTimingIntVsAnSingle,TestCompareAnalytic,Dump,TestBessel
