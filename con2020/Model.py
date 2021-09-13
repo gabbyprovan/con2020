@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
-from ._Analytic import _AnalyticEdwards,_AnalyticOriginal,_FiniteEdwards,_FiniteOriginal
+from ._Analytic import _AnalyticEdwards,_FiniteEdwards,
 from ._Integrate import _Integrate
 
 
@@ -109,8 +109,8 @@ class Model(object):
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
-					'CartesianOut'	: True,
-					'Edwards'		: True }
+					'CartesianOut'	: True
+			  		'RadialCurrents' : True'}
 					
 		#list the long names
 		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
@@ -169,16 +169,13 @@ class Model(object):
 			raise SystemExit("'xp' should be finite")	
 			
 		#set the analytic function to use
-		if self.Edwards:
-			self._AnalyticFunc = _AnalyticEdwards
-		else:
-			self._AnalyticFunc = _AnalyticOriginal
+
+		self._AnalyticFunc = _AnalyticEdwards
 			
 		#set the analytic function to use for the outer bit of the current sheet
-		if self.Edwards:
-			self._Finite = _FiniteEdwards
-		else:
-			self._Finite = _FiniteOriginal		
+
+		self._Finite = _FiniteEdwards
+		
 			
 		#set the integral functions (scalar and vector)
 		if self.equation_type == 'analytic':
@@ -657,18 +654,11 @@ class Model(object):
 		using analytical equations either from Connerney et al 1981 or
 		the divergence-free equations from Edwards et al 2001 (defualt).
 		
-		The equations used are predefined on creation of the object
-		using the "Edwards" keyword (default=True).
+		The equations used the "Edwards" ones.
+		Using equations 9a and 9b for the small rho approximation
+		and 13a and 13b for the large rho approximation of Edwards
+		et al.
 		
-		If Edwards == True:
-			Using equations 9a and 9b for the small rho approximation
-			and 13a and 13b for the large rho approximation of Edwards
-			et al.
-		
-		If Edwards == False:
-			Use equations A1-A4 of Connerney et al 1981 for the large 
-			rho approximation and A7 and A8 for the small rho 
-			approximation.
 			
 		Inputs
 		======
@@ -1011,8 +1001,9 @@ class Model(object):
 			
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
-		
-		
+			   
+		if self.RadialCurrents == False:
+			Bphi=Bphi*0.			   
 		#return to SIII coordinates
 		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
 		
