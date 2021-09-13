@@ -170,11 +170,11 @@ class Model(object):
 			
 		#set the analytic function to use
 
-			self._AnalyticFunc = _AnalyticEdwards
+		self._AnalyticFunc = _AnalyticEdwards
 			
 		#set the analytic function to use for the outer bit of the current sheet
 
-			self._Finite = _FiniteEdwards
+		self._Finite = _FiniteEdwards
 		
 			
 		#set the integral functions (scalar and vector)
