@@ -201,37 +201,37 @@ class Model(object):
 			self._OutputConv = self._ConvOutputPol		
 				
 		#some constants
-		self.Deg2Rad = np.pi/180.0
-		self.dipole_shift = self.xp*self.Deg2Rad # xp is longitude of the current sheet
-		self.theta_cs = self.xt*self.Deg2Rad # current sheet tilt
-		self.cosxp = np.cos(self.dipole_shift)
-		self.sinxp = np.sin(self.dipole_shift)
-		self.cosxt = np.cos(self.theta_cs)
-		self.sinxt = np.sin(self.theta_cs)
+		self._Deg2Rad = np.pi/180.0
+		self._dipole_shift = self.xp*self._Deg2Rad # xp is longitude of the current sheet
+		self._theta_cs = self.xt*self._Deg2Rad # current sheet tilt
+		self._cosxp = np.cos(self._dipole_shift)
+		self._sinxp = np.sin(self._dipole_shift)
+		self._cosxt = np.cos(self._theta_cs)
+		self._sinxt = np.sin(self._theta_cs)
 
 		if self.equation_type != 'analytic':
 			#this stuff is for integration
-			self.dlambda_brho    = 1e-4  #% default step size for Brho function
-			self.dlambda_bz      = 5e-5  #% default step size for Bz function
+			self._dlambda_brho    = 1e-4  #% default step size for Brho function
+			self._dlambda_bz      = 5e-5  #% default step size for Bz function
 			
 			#each of the following variables will be indexed by zcase (starting at 0)
-			self.lambda_max_brho = [4,4,40,40,100,100]
-			self.lambda_max_bz = [100,20,100,20,100,20]
+			self._lambda_max_brho = [4,4,40,40,100,100]
+			self._lambda_max_bz = [100,20,100,20,100,20]
 			
-			self.lambda_int_brho = []
-			self.lambda_int_bz = []
+			self._lambda_int_brho = []
+			self._lambda_int_bz = []
 			
-			self.beselj_rho_r0_0 = []
-			self.beselj_z_r0_0 = []
+			self._beselj_rho_r0_0 = []
+			self._beselj_z_r0_0 = []
 
 			for i in range(0,6):
 				#save the lambda arrays
-				self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
-				self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
+				self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
+				self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
 				
 				#save the Bessel functions
-				self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
-				self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
+				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
+				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))
 	
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
@@ -320,12 +320,12 @@ class Model(object):
 		cosp = x0/rho0
 
 		#rotate x and y to align with the current sheet longitude
-		x = rho0*(cosp*self.cosxp + sinp*self.sinxp)
-		y1 = rho0*(sinp*self.cosxp - cosp*self.sinxp)
+		x = rho0*(cosp*self._cosxp + sinp*self._sinxp)
+		y1 = rho0*(sinp*self._cosxp - cosp*self._sinxp)
 
 		#rotate about y axis to align with current sheet
-		x1 = x*self.cosxt + z0*self.sinxt
-		z1 = z0*self.cosxt - x*self.sinxt	
+		x1 = x*self._cosxt + z0*self._sinxt
+		z1 = z0*self._cosxt - x*self._sinxt	
 
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
@@ -382,11 +382,11 @@ class Model(object):
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
 
-		Bx = Bx1*self.cosxt - Bz1*self.sinxt
-		Bz0 = Bx1*self.sinxt + Bz1*self.cosxt		
+		Bx = Bx1*self._cosxt - Bz1*self._sinxt
+		Bz0 = Bx1*self._sinxt + Bz1*self._cosxt		
 
-		Bx0 = Bx*self.cosxp - By1*self.sinxp
-		By0 = By1*self.cosxp + Bx*self.sinxp	
+		Bx0 = Bx*self._cosxp - By1*self._sinxp
+		By0 = By1*self._cosxp + Bx*self._sinxp	
 	
 		return Bx0,By0,Bz0
 		
@@ -475,13 +475,13 @@ class Model(object):
 		cosp = np.cos(phi)
 
 		#surprisingly this is slightly (~20%) quicker than 
-		#x = r*sint*np.cos(phi - self.dipole_shift) etc.
-		x = r*sint*(cosp*self.cosxp + sinp*self.sinxp)
-		y1 = r*sint*(sinp*self.cosxp - cosp*self.sinxp)
+		#x = r*sint*np.cos(phi - self._dipole_shift) etc.
+		x = r*sint*(cosp*self._cosxp + sinp*self._sinxp)
+		y1 = r*sint*(sinp*self._cosxp - cosp*self._sinxp)
 		z = r*cost
 		
-		x1 = x*self.cosxt + z*self.sinxt
-		z1 = z*self.cosxt - x*self.sinxt	
+		x1 = x*self._cosxt + z*self._sinxt
+		z1 = z*self._cosxt - x*self._sinxt	
 	
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
@@ -542,11 +542,11 @@ class Model(object):
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
 
-		Bx = Bx1*self.cosxt - Bz1*self.sinxt
-		Bz = Bx1*self.sinxt + Bz1*self.cosxt		
+		Bx = Bx1*self._cosxt - Bz1*self._sinxt
+		Bz = Bx1*self._sinxt + Bz1*self._cosxt		
 
-		Bx2 = Bx*self.cosxp - By1*self.sinxp
-		By2 = By1*self.cosxp + Bx*self.sinxp	
+		Bx2 = Bx*self._cosxp - By1*self._sinxp
+		By2 = By1*self._cosxp + Bx*self._sinxp	
 
 		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost
 		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint
@@ -736,31 +736,31 @@ class Model(object):
 		zc -= np.int(check2)
 		
 		#do the integration
-		beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho)
-		beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho)
+		beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho)
+		beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho)
 		if (abs_z > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-							*np.sinh(self.d*self.lambda_int_brho[zc]) \
-							*np.exp(-abs_z*self.lambda_int_brho[zc]) \
-							/self.lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0 *self.beselj_z_r0_0[zc] \
-							*np.sinh(self.d*self.lambda_int_bz[zc]) \
-							*np.exp(-abs_z*self.lambda_int_bz[zc]) \
-							/self.lambda_int_bz[zc]  
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+							*np.sinh(self.d*self._lambda_int_brho[zc]) \
+							*np.exp(-abs_z*self._lambda_int_brho[zc]) \
+							/self._lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0 *self._beselj_z_r0_0[zc] \
+							*np.sinh(self.d*self._lambda_int_bz[zc]) \
+							*np.exp(-abs_z*self._lambda_int_bz[zc]) \
+							/self._lambda_int_bz[zc]  
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
 			if z < 0:
 				Brho = -Brho
 		else:
-			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-							*(np.sinh(z*self.lambda_int_brho[zc]) \
-							*np.exp(-self.d*self.lambda_int_brho[zc])) \
-							/self.lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0  *self.beselj_z_r0_0[zc] \
-							*(1.0 -np.cosh(z*self.lambda_int_bz[zc]) \
-							*np.exp(-self.d*self.lambda_int_bz[zc])) \
-							/self.lambda_int_bz[zc]
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)#
-		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+							*(np.sinh(z*self._lambda_int_brho[zc]) \
+							*np.exp(-self.d*self._lambda_int_brho[zc])) \
+							/self._lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0  *self._beselj_z_r0_0[zc] \
+							*(1.0 -np.cosh(z*self._lambda_int_bz[zc]) \
+							*np.exp(-self.d*self._lambda_int_bz[zc])) \
+							/self._lambda_int_bz[zc]
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)#
+		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
 
 		return Brho,Bz
 
@@ -807,31 +807,31 @@ class Model(object):
 				for zi in range(0,n_ind_case):
 					ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
 
-					beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho[ind_for_integral])
-					beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho[ind_for_integral] )
+					beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho[ind_for_integral])
+					beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho[ind_for_integral] )
 					if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-										*np.sinh(self.d*self.lambda_int_brho[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_brho[zc]) \
-										/self.lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
-										*np.sinh(self.d*self.lambda_int_bz[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_bz[zc]) \
-										/self.lambda_int_bz[zc]
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										*np.sinh(self.d*self._lambda_int_brho[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										/self._lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										*np.sinh(self.d*self._lambda_int_bz[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										/self._lambda_int_bz[zc]
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
 						if z[ind_for_integral] < 0:
 							Brho[ind_for_integral] = -Brho[ind_for_integral]
 					else:
-						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-										*(np.sinh(z[ind_for_integral]*self.lambda_int_brho[zc]) \
-										*np.exp(-self.d*self.lambda_int_brho[zc])) \
-										/self.lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
-										*(1.0 -np.cosh(z[ind_for_integral]*self.lambda_int_bz[zc]) \
-										*np.exp(-self.d*self.lambda_int_bz[zc])) \
-										/self.lambda_int_bz[zc]  
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
-					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										*(np.sinh(z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										*np.exp(-self.d*self._lambda_int_brho[zc])) \
+										/self._lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										*(1.0 -np.cosh(z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										*np.exp(-self.d*self._lambda_int_bz[zc])) \
+										/self._lambda_int_bz[zc]  
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
+					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
 		
 		return Brho,Bz			
 	
