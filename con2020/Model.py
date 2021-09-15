@@ -109,8 +109,7 @@ class Model(object):
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
-					'CartesianOut'	: True,
-			  		'RadialCurrents' : True}
+					'CartesianOut'	: True}
 					
 		#list the long names
 		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
