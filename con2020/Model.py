@@ -209,28 +209,29 @@ class Model(object):
 		self.cosxt = np.cos(self.theta_cs)
 		self.sinxt = np.sin(self.theta_cs)
 
-		#this stuff is for integration
-		self.dlambda_brho    = 1e-4  #% default step size for Brho function
-		self.dlambda_bz      = 5e-5  #% default step size for Bz function
-		
-		#each of the following variables will be indexed by zcase (starting at 0)
-		self.lambda_max_brho = [4,4,40,40,100,100]
-		self.lambda_max_bz = [100,20,100,20,100,20]
-		
-		self.lambda_int_brho = []
-		self.lambda_int_bz = []
-		
-		self.beselj_rho_r0_0 = []
-		self.beselj_z_r0_0 = []
-
-		for i in range(0,6):
-			#save the lambda arrays
-			self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
-			self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
+		if self.equation_type != 'analytic':
+			#this stuff is for integration
+			self.dlambda_brho    = 1e-4  #% default step size for Brho function
+			self.dlambda_bz      = 5e-5  #% default step size for Bz function
 			
-			#save the Bessel functions
-			self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
-			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
+			#each of the following variables will be indexed by zcase (starting at 0)
+			self.lambda_max_brho = [4,4,40,40,100,100]
+			self.lambda_max_bz = [100,20,100,20,100,20]
+			
+			self.lambda_int_brho = []
+			self.lambda_int_bz = []
+			
+			self.beselj_rho_r0_0 = []
+			self.beselj_z_r0_0 = []
+
+			for i in range(0,6):
+				#save the lambda arrays
+				self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
+				self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
+				
+				#save the Bessel functions
+				self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
+				self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
 	
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
