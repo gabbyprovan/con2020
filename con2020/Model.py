@@ -22,8 +22,8 @@ class Model(object):
 		=================
 		mu_i_div2__current_density_nT (mu_i): float
 			mu0i0/2 term (current sheet current density), in nT
-		i_rho__azimuthal_current_density_nT (i_rho) : float
-			azimuthal current term from Connerney et al., 2020
+		i_rho__radial_current_density_nT (i_rho) : float
+			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 nT) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
 			pass to the next, where Table 2 provides radial current 
@@ -118,7 +118,7 @@ class Model(object):
 						'd'		: 'd__cs_half_thickness_rj',
 						'xt'	: 'xt__cs_tilt_degs',
 						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
-						'i_rho'	: 'i_rho__azimuthal_current_density_nT'		  }
+						'i_rho'	: 'i_rho__radial_current_density_nT'		  }
 						
 		#check input kwargs
 		#for those which exist (either in long or short name form) add
