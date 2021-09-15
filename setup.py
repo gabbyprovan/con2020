@@ -33,8 +33,8 @@ version = getversion()
 setuptools.setup(
     name="con2020",
 	version=version,
-    author="Gabby Provan",
-    author_email="?",
+    author="Gabby Provan and Matt James",
+    author_email="gp31@leicester.ac.uk",
     description="Python module for the Connerney 2020 model.",
     long_description=long_description,
     long_description_content_type="text/markdown",
