@@ -175,25 +175,8 @@ class Model(object):
 		self._Finite = _FiniteEdwards
 		
 			
-		#set the coordinate conversion functions for input
-		if self.CartesianIn:
-			if self.error_check:
-				self._InputConv = self._ConvInputCartSafe
-			else:
-				self._InputConv = self._ConvInputCart
-		else:
-			if self.error_check:
-				self._InputConv = self._ConvInputPolSafe
-			else:
-				self._InputConv = self._ConvInputPol	
-				
-		#set the output functions
-		if self.CartesianOut:
-			self._OutputConv = self._ConvOutputCart
-		else:
-			self._OutputConv = self._ConvOutputPol		
-				
 
+				
 
 
 	#the following variables are set as properties, so that if someone 
@@ -265,6 +248,39 @@ class Model(object):
 				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
 				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
 					
+	#also for CartesianIn/CartesianOut
+	@property
+	def CartesianIn(self):
+		return self._CartIn
+	
+	@CartesianIn.setter
+	def CartesianIn(self,value):
+		self._CartIn = value
+		#set the coordinate conversion functions for input
+		if self._CartIn:
+			if self.error_check:
+				self._InputConv = self._ConvInputCartSafe
+			else:
+				self._InputConv = self._ConvInputCart
+		else:
+			if self.error_check:
+				self._InputConv = self._ConvInputPolSafe
+			else:
+				self._InputConv = self._ConvInputPol	
+	
+	@property
+	def CartesianOut(self):
+		return self._CartOut
+	
+	@CartesianOut.setter
+	def CartesianOut(self,value):
+		self._CartOut = value		
+		#set the output functions
+		if self._CartOut:
+			self._OutputConv = self._ConvOutputCart
+		else:
+			self._OutputConv = self._ConvOutputPol		
+						
 		
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
