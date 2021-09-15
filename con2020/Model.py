@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
-from ._Analytic import _AnalyticEdwards,_FiniteEdwards,
+from ._Analytic import _AnalyticEdwards,_FiniteEdwards
 from ._Integrate import _Integrate
 
 
@@ -109,8 +109,8 @@ class Model(object):
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
-					'CartesianOut'	: True
-			  		'RadialCurrents' : True'}
+					'CartesianOut'	: True,
+			  		'RadialCurrents' : True}
 					
 		#list the long names
 		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
@@ -159,7 +159,7 @@ class Model(object):
 		if not self.equation_type in ['analytic','hybrid','integral']:
 			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")	
 		
-		ckeys = ['mu_i','i_rho','r0','r1','d','xt']
+		ckeys = ['mu_i','r0','r1','d','xt']
 		for k in ckeys:
 			x = getattr(self,k)
 			if (x <= 0) or (np.isfinite(x) == False):
@@ -169,11 +169,9 @@ class Model(object):
 			raise SystemExit("'xp' should be finite")	
 			
 		#set the analytic function to use
-
 		self._AnalyticFunc = _AnalyticEdwards
 			
 		#set the analytic function to use for the outer bit of the current sheet
-
 		self._Finite = _FiniteEdwards
 		
 			
