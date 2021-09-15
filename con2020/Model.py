@@ -134,19 +134,23 @@ class Model(object):
 		#short and long name keys
 		skeys = list(longnames.keys())
 		lkeys = [longnames[k] for k in skeys]
+
+		#some constants
+		self._Deg2Rad = np.pi/180.0
+		
 			
 		#loop through each one		
 		for k in dkeys:
 			if k in ikeys:
 				#short name found in kwargs - add to this object
-				setattr(self,k,kwargs[k])
+				kw = kwargs[k]
 			elif longnames.get(k,'') in ikeys:
 				#long name found - add to object
-				setattr(self,k,kwargs[longnames[k]])
+				kw = kwargs[longnames[k]]
 			else:
 				#key not found, use default
-				setattr(self,k,defargs[k])
-				
+				kw = defargs[k]
+			setattr(self,k,kw)
 		
 		#check for additional keys and issue a warning
 		for k in ikeys:
@@ -200,14 +204,6 @@ class Model(object):
 		else:
 			self._OutputConv = self._ConvOutputPol		
 				
-		#some constants
-		self._Deg2Rad = np.pi/180.0
-		self._dipole_shift = self.xp*self._Deg2Rad # xp is longitude of the current sheet
-		self._theta_cs = self.xt*self._Deg2Rad # current sheet tilt
-		self._cosxp = np.cos(self._dipole_shift)
-		self._sinxp = np.sin(self._dipole_shift)
-		self._cosxt = np.cos(self._theta_cs)
-		self._sinxt = np.sin(self._theta_cs)
 
 		if self.equation_type != 'analytic':
 			#this stuff is for integration
@@ -232,7 +228,33 @@ class Model(object):
 				#save the Bessel functions
 				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
 				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))
+
+	#the following variables are set as properties, so that if someone 
+	#changes xt or xp after the object has been created, it will 
+	#automatically update the cos/sin values of each
+	@property
+	def xp(self):
+		return self._xp
 	
+	@xp.setter
+	def xp(self,value):
+		self._xp = value
+		self._dipole_shift = self._xp*self._Deg2Rad # xp is longitude of the current sheet
+		self._cosxp = np.cos(self._dipole_shift)
+		self._sinxp = np.sin(self._dipole_shift)	
+	
+	@property
+	def xt(self):
+		return self._xt
+	
+	@xt.setter
+	def xt(self,value):
+		self._xt = value
+		self._theta_cs = self._xt*self._Deg2Rad # current sheet tilt
+		self._cosxt = np.cos(self._theta_cs)
+		self._sinxt = np.sin(self._theta_cs)
+	
+
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
 		Converts input coordinates from Cartesian right-handed System 
