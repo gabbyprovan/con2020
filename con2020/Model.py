@@ -158,10 +158,7 @@ class Model(object):
 				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
 		
 		#now do the checks
-		self.equation_type = self.equation_type.lower()
-		if not self.equation_type in ['analytic','hybrid','integral']:
-			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")	
-		
+	
 		ckeys = ['mu_i','r0','r1','d','xt']
 		for k in ckeys:
 			x = getattr(self,k)
@@ -177,14 +174,6 @@ class Model(object):
 		#set the analytic function to use for the outer bit of the current sheet
 		self._Finite = _FiniteEdwards
 		
-			
-		#set the integral functions (scalar and vector)
-		if self.equation_type == 'analytic':
-			self._ModelFunc = self._Analytic
-		elif self.equation_type == 'integral':
-			self._ModelFunc = self._Integral
-		else:
-			self._ModelFunc = self._Hybrid
 			
 		#set the coordinate conversion functions for input
 		if self.CartesianIn:
@@ -205,29 +194,7 @@ class Model(object):
 			self._OutputConv = self._ConvOutputPol		
 				
 
-		if self.equation_type != 'analytic':
-			#this stuff is for integration
-			self._dlambda_brho    = 1e-4  #% default step size for Brho function
-			self._dlambda_bz      = 5e-5  #% default step size for Bz function
-			
-			#each of the following variables will be indexed by zcase (starting at 0)
-			self._lambda_max_brho = [4,4,40,40,100,100]
-			self._lambda_max_bz = [100,20,100,20,100,20]
-			
-			self._lambda_int_brho = []
-			self._lambda_int_bz = []
-			
-			self._beselj_rho_r0_0 = []
-			self._beselj_z_r0_0 = []
 
-			for i in range(0,6):
-				#save the lambda arrays
-				self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
-				self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
-				
-				#save the Bessel functions
-				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
-				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))
 
 	#the following variables are set as properties, so that if someone 
 	#changes xt or xp after the object has been created, it will 
@@ -254,7 +221,51 @@ class Model(object):
 		self._cosxt = np.cos(self._theta_cs)
 		self._sinxt = np.sin(self._theta_cs)
 	
+	#do a similar thing for equation type
+	@property
+	def equation_type(self):
+		return self._eq_type
+	
+	@equation_type.setter
+	def equation_type(self,value):
+		_eq_type = value.lower()
+		if not _eq_type in ['analytic','hybrid','integral']:
+			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")			
+		self._eq_type = _eq_type
 
+		#set the integral functions (scalar and vector)
+		if self._eq_type == 'analytic':
+			self._ModelFunc = self._Analytic
+		elif self._eq_type == 'integral':
+			self._ModelFunc = self._Integral
+		else:
+			self._ModelFunc = self._Hybrid
+		
+		if self._eq_type != 'analytic' and not hasattr(self,'_dlambda_brho'):
+			#this stuff is for integration
+			self._dlambda_brho    = 1e-4  #% default step size for Brho function
+			self._dlambda_bz      = 5e-5  #% default step size for Bz function
+			
+			#each of the following variables will be indexed by zcase (starting at 0)
+			self._lambda_max_brho = [4,4,40,40,100,100]
+			self._lambda_max_bz = [100,20,100,20,100,20]
+			
+			self._lambda_int_brho = []
+			self._lambda_int_bz = []
+			
+			self._beselj_rho_r0_0 = []
+			self._beselj_z_r0_0 = []
+
+			for i in range(0,6):
+				#save the lambda arrays
+				self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
+				self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
+				
+				#save the Bessel functions
+				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
+				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
+					
+		
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
 		Converts input coordinates from Cartesian right-handed System 
