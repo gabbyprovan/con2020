@@ -2,6 +2,12 @@
 
 Python implementation of the Connerney et al., 1981 and Connerney et al., 2020 Jovian magnetodisc model. This model provides the magnetic field due to a "washer-shaped" current near to Jupiter's magnetic equator. This model code uses either analytical equations from Edwards et al., 2001 or the numerical integration of the Connerney et al., 1981 equations to provide the magnetodisc field, depending upon proximity to the disc along _z_ and the inner edge of the disc, _r<sub>0</sub>_.
 
+For the IDL implementation of this model, see:
+https://github.com/marissav06/con2020_idl
+
+Or for Matlab:
+https://github.com/marissav06/con2020_matlab
+
 ## Installation
 
 Install the module using `pip3`:
