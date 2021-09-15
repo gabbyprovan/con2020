@@ -78,7 +78,7 @@ The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the numb
 | Keyword (long)                            | Keyword (short) | Default Value | Description                                                  |
 | ----------------------------------------- | --------------- | ------------- | ------------------------------------------------------------ |
 | `mu_i_div2__current_density_nT`           | `mu_i`          | `139.6`*      | Current sheet current density in nT.                         |
-| `i_rho__azimuthal_current_density_nT`     | `i_rho`         | `16.7`*       | Azimuthal current density in nT from Connerney et al 2020.   |
+| `i_rho__radial_current_density_nT`        | `i_rho`         | `16.7`*       | Radial current density in nT from Connerney et al 2020.      |
 | `r0__inner_rj`                            | `r0`            | `7.8`         | Inner edge of the current sheet in R<sub>j</sub>.            |
 | `r1__outer_rj`                            | `r1`            | `51.4`        | Outer edge of the current sheet in R<sub>j</sub>.            |
 | `d__cs_half_thickness_rj`                 | `d`             | `3.6`         | Current sheet half thickness in R<sub>j</sub>.               |
