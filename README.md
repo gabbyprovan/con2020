@@ -18,6 +18,9 @@ Install the module using `pip3`:
 
 ```bash
 pip3 install --user con2020
+
+#or if you have previously installed using this method
+pip3 install --upgrade --user con2020
 ```
 
 Or using this repo:
