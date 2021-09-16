@@ -277,6 +277,11 @@ class Model(object):
 			self._SetInputConv()
 		
 	def _SetInputConv(self):
+		'''
+		This function sets the appropriate function pointers for the 
+		input coordinate conversion.
+		
+		'''
 		if self._CartIn:
 			if self._err_chk:
 				self._InputConv = self._ConvInputCartSafe
@@ -290,6 +295,11 @@ class Model(object):
 		
 	
 	def _UpdateBessel(self):
+		'''
+		This function updates a bunch of internal parameters and arrays 
+		which are used for integration.
+		
+		'''
 		#this stuff is for integration
 		self._dlambda_brho    = 1e-4  #% default step size for Brho function
 		self._dlambda_bz      = 5e-5  #% default step size for Bz function
