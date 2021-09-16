@@ -238,16 +238,7 @@ class Model(object):
 	def CartesianIn(self,value):
 		self._CartIn = value
 		#set the coordinate conversion functions for input
-		if self._CartIn:
-			if self.error_check:
-				self._InputConv = self._ConvInputCartSafe
-			else:
-				self._InputConv = self._ConvInputCart
-		else:
-			if self.error_check:
-				self._InputConv = self._ConvInputPolSafe
-			else:
-				self._InputConv = self._ConvInputPol	
+		self._SetInputConv()
 	
 	@property
 	def CartesianOut(self):
@@ -274,7 +265,28 @@ class Model(object):
 		if hasattr(self,'_eq_type'):
 			if self._eq_type != 'analytic':
 				self._UpdateBessel()
-			
+	
+	@property
+	def error_check(self):
+		return self._err_chk
+	
+	@error_check.setter
+	def error_check(self,value):
+		self._err_chk = value
+		if hasattr(self,'_CartIn'):
+			self._SetInputConv()
+		
+	def _SetInputConv(self):
+		if self._CartIn:
+			if self._err_chk:
+				self._InputConv = self._ConvInputCartSafe
+			else:
+				self._InputConv = self._ConvInputCart
+		else:
+			if self._err_chk:
+				self._InputConv = self._ConvInputPolSafe
+			else:
+				self._InputConv = self._ConvInputPol		
 		
 	
 	def _UpdateBessel(self):
