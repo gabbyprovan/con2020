@@ -225,29 +225,10 @@ class Model(object):
 			self._ModelFunc = self._Hybrid
 		
 		if self._eq_type != 'analytic' and not hasattr(self,'_dlambda_brho'):
-			#this stuff is for integration
-			self._dlambda_brho    = 1e-4  #% default step size for Brho function
-			self._dlambda_bz      = 5e-5  #% default step size for Bz function
-			
-			#each of the following variables will be indexed by zcase (starting at 0)
-			self._lambda_max_brho = [4,4,40,40,100,100]
-			self._lambda_max_bz = [100,20,100,20,100,20]
-			
-			self._lambda_int_brho = []
-			self._lambda_int_bz = []
-			
-			self._beselj_rho_r0_0 = []
-			self._beselj_z_r0_0 = []
+			self._UpdateBessel()
+	
+	
 
-			for i in range(0,6):
-				#save the lambda arrays
-				self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
-				self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
-				
-				#save the Bessel functions
-				self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
-				self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
-					
 	#also for CartesianIn/CartesianOut
 	@property
 	def CartesianIn(self):
@@ -281,6 +262,45 @@ class Model(object):
 		else:
 			self._OutputConv = self._ConvOutputPol		
 						
+
+	@property
+	def r0(self):
+		return self._r0
+	
+	@r0.setter
+	def r0(self,value):
+		self._r0 = value
+		#update the bessel functions
+		if hasattr(self,'_eq_type'):
+			if self._eq_type != 'analytic':
+				self._UpdateBessel()
+			
+		
+	
+	def _UpdateBessel(self):
+		#this stuff is for integration
+		self._dlambda_brho    = 1e-4  #% default step size for Brho function
+		self._dlambda_bz      = 5e-5  #% default step size for Bz function
+			
+		#each of the following variables will be indexed by zcase (starting at 0)
+		self._lambda_max_brho = [4,4,40,40,100,100]
+		self._lambda_max_bz = [100,20,100,20,100,20]
+			
+		self._lambda_int_brho = []
+		self._lambda_int_bz = []
+			
+		self._beselj_rho_r0_0 = []
+		self._beselj_z_r0_0 = []
+
+		for i in range(0,6):
+			#save the lambda arrays
+			self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
+			self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
+				
+			#save the Bessel functions
+			self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
+			self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
+					
 		
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
