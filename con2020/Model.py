@@ -22,8 +22,8 @@ class Model(object):
 		=================
 		mu_i_div2__current_density_nT (mu_i): float
 			mu0i0/2 term (current sheet current density), in nT
-		i_rho__azimuthal_current_density_nT (i_rho) : float
-			azimuthal current term from Connerney et al., 2020
+		i_rho__radial_current_density_nT (i_rho) : float
+			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 nT) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
 			pass to the next, where Table 2 provides radial current 
@@ -118,7 +118,7 @@ class Model(object):
 						'd'		: 'd__cs_half_thickness_rj',
 						'xt'	: 'xt__cs_tilt_degs',
 						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
-						'i_rho'	: 'i_rho__azimuthal_current_density_nT'		  }
+						'i_rho'	: 'i_rho__radial_current_density_nT'		  }
 						
 		#check input kwargs
 		#for those which exist (either in long or short name form) add
@@ -134,19 +134,23 @@ class Model(object):
 		#short and long name keys
 		skeys = list(longnames.keys())
 		lkeys = [longnames[k] for k in skeys]
+
+		#some constants
+		self._Deg2Rad = np.pi/180.0
+		
 			
 		#loop through each one		
 		for k in dkeys:
 			if k in ikeys:
 				#short name found in kwargs - add to this object
-				setattr(self,k,kwargs[k])
+				kw = kwargs[k]
 			elif longnames.get(k,'') in ikeys:
 				#long name found - add to object
-				setattr(self,k,kwargs[longnames[k]])
+				kw = kwargs[longnames[k]]
 			else:
 				#key not found, use default
-				setattr(self,k,defargs[k])
-				
+				kw = defargs[k]
+			setattr(self,k,kw)
 		
 		#check for additional keys and issue a warning
 		for k in ikeys:
@@ -154,10 +158,7 @@ class Model(object):
 				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
 		
 		#now do the checks
-		self.equation_type = self.equation_type.lower()
-		if not self.equation_type in ['analytic','hybrid','integral']:
-			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")	
-		
+	
 		ckeys = ['mu_i','r0','r1','d','xt']
 		for k in ckeys:
 			x = getattr(self,k)
@@ -174,64 +175,155 @@ class Model(object):
 		self._Finite = _FiniteEdwards
 		
 			
+
+				
+
+
+	#the following variables are set as properties, so that if someone 
+	#changes xt or xp after the object has been created, it will 
+	#automatically update the cos/sin values of each
+	@property
+	def xp(self):
+		return self._xp
+	
+	@xp.setter
+	def xp(self,value):
+		self._xp = value
+		self._dipole_shift = self._xp*self._Deg2Rad # xp is longitude of the current sheet
+		self._cosxp = np.cos(self._dipole_shift)
+		self._sinxp = np.sin(self._dipole_shift)	
+	
+	@property
+	def xt(self):
+		return self._xt
+	
+	@xt.setter
+	def xt(self,value):
+		self._xt = value
+		self._theta_cs = self._xt*self._Deg2Rad # current sheet tilt
+		self._cosxt = np.cos(self._theta_cs)
+		self._sinxt = np.sin(self._theta_cs)
+	
+	#do a similar thing for equation type
+	@property
+	def equation_type(self):
+		return self._eq_type
+	
+	@equation_type.setter
+	def equation_type(self,value):
+		_eq_type = value.lower()
+		if not _eq_type in ['analytic','hybrid','integral']:
+			raise SystemExit("ERROR: 'equation_type' has unrecognized string - it should be 'analytic'|'hybrid'|'integral'")			
+		self._eq_type = _eq_type
+
 		#set the integral functions (scalar and vector)
-		if self.equation_type == 'analytic':
+		if self._eq_type == 'analytic':
 			self._ModelFunc = self._Analytic
-		elif self.equation_type == 'integral':
+		elif self._eq_type == 'integral':
 			self._ModelFunc = self._Integral
 		else:
 			self._ModelFunc = self._Hybrid
-			
+		
+		if self._eq_type != 'analytic' and not hasattr(self,'_dlambda_brho'):
+			self._UpdateBessel()
+	
+	
+
+	#also for CartesianIn/CartesianOut
+	@property
+	def CartesianIn(self):
+		return self._CartIn
+	
+	@CartesianIn.setter
+	def CartesianIn(self,value):
+		self._CartIn = value
 		#set the coordinate conversion functions for input
-		if self.CartesianIn:
-			if self.error_check:
+		self._SetInputConv()
+	
+	@property
+	def CartesianOut(self):
+		return self._CartOut
+	
+	@CartesianOut.setter
+	def CartesianOut(self,value):
+		self._CartOut = value		
+		#set the output functions
+		if self._CartOut:
+			self._OutputConv = self._ConvOutputCart
+		else:
+			self._OutputConv = self._ConvOutputPol		
+						
+
+	@property
+	def r0(self):
+		return self._r0
+	
+	@r0.setter
+	def r0(self,value):
+		self._r0 = value
+		#update the bessel functions
+		if hasattr(self,'_eq_type'):
+			if self._eq_type != 'analytic':
+				self._UpdateBessel()
+	
+	@property
+	def error_check(self):
+		return self._err_chk
+	
+	@error_check.setter
+	def error_check(self,value):
+		self._err_chk = value
+		if hasattr(self,'_CartIn'):
+			self._SetInputConv()
+		
+	def _SetInputConv(self):
+		'''
+		This function sets the appropriate function pointers for the 
+		input coordinate conversion.
+		
+		'''
+		if self._CartIn:
+			if self._err_chk:
 				self._InputConv = self._ConvInputCartSafe
 			else:
 				self._InputConv = self._ConvInputCart
 		else:
-			if self.error_check:
+			if self._err_chk:
 				self._InputConv = self._ConvInputPolSafe
 			else:
-				self._InputConv = self._ConvInputPol	
-				
-		#set the output functions
-		if self.CartesianOut:
-			self._OutputConv = self._ConvOutputCart
-		else:
-			self._OutputConv = self._ConvOutputPol		
-				
-		#some constants
-		self.Deg2Rad = np.pi/180.0
-		self.dipole_shift = self.xp*self.Deg2Rad # xp is longitude of the current sheet
-		self.theta_cs = self.xt*self.Deg2Rad # current sheet tilt
-		self.cosxp = np.cos(self.dipole_shift)
-		self.sinxp = np.sin(self.dipole_shift)
-		self.cosxt = np.cos(self.theta_cs)
-		self.sinxt = np.sin(self.theta_cs)
-
+				self._InputConv = self._ConvInputPol		
+		
+	
+	def _UpdateBessel(self):
+		'''
+		This function updates a bunch of internal parameters and arrays 
+		which are used for integration.
+		
+		'''
 		#this stuff is for integration
-		self.dlambda_brho    = 1e-4  #% default step size for Brho function
-		self.dlambda_bz      = 5e-5  #% default step size for Bz function
-		
+		self._dlambda_brho    = 1e-4  #% default step size for Brho function
+		self._dlambda_bz      = 5e-5  #% default step size for Bz function
+			
 		#each of the following variables will be indexed by zcase (starting at 0)
-		self.lambda_max_brho = [4,4,40,40,100,100]
-		self.lambda_max_bz = [100,20,100,20,100,20]
-		
-		self.lambda_int_brho = []
-		self.lambda_int_bz = []
-		
-		self.beselj_rho_r0_0 = []
-		self.beselj_z_r0_0 = []
+		self._lambda_max_brho = [4,4,40,40,100,100]
+		self._lambda_max_bz = [100,20,100,20,100,20]
+			
+		self._lambda_int_brho = []
+		self._lambda_int_bz = []
+			
+		self._beselj_rho_r0_0 = []
+		self._beselj_z_r0_0 = []
 
 		for i in range(0,6):
 			#save the lambda arrays
-			self.lambda_int_brho.append(np.arange(self.dlambda_brho,self.dlambda_brho*(self.lambda_max_brho[i]/self.dlambda_brho),self.dlambda_brho))
-			self.lambda_int_bz.append(np.arange(self.dlambda_bz,self.dlambda_bz*(self.lambda_max_bz[i]/self.dlambda_bz),self.dlambda_bz))
-			
+			self._lambda_int_brho.append(np.arange(self._dlambda_brho,self._dlambda_brho*(self._lambda_max_brho[i]/self._dlambda_brho),self._dlambda_brho))
+			self._lambda_int_bz.append(np.arange(self._dlambda_bz,self._dlambda_bz*(self._lambda_max_bz[i]/self._dlambda_bz),self._dlambda_bz))
+				
 			#save the Bessel functions
-			self.beselj_rho_r0_0.append(j0(self.lambda_int_brho[i]*self.r0))
-			self.beselj_z_r0_0.append(j0(self.lambda_int_bz[i]*self.r0))
-	
+			self._beselj_rho_r0_0.append(j0(self._lambda_int_brho[i]*self.r0))
+			self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
+					
+		
 	def _ConvInputCartSafe(self,x0,y0,z0):
 		'''
 		Converts input coordinates from Cartesian right-handed System 
@@ -319,12 +411,12 @@ class Model(object):
 		cosp = x0/rho0
 
 		#rotate x and y to align with the current sheet longitude
-		x = rho0*(cosp*self.cosxp + sinp*self.sinxp)
-		y1 = rho0*(sinp*self.cosxp - cosp*self.sinxp)
+		x = rho0*(cosp*self._cosxp + sinp*self._sinxp)
+		y1 = rho0*(sinp*self._cosxp - cosp*self._sinxp)
 
 		#rotate about y axis to align with current sheet
-		x1 = x*self.cosxt + z0*self.sinxt
-		z1 = z0*self.cosxt - x*self.sinxt	
+		x1 = x*self._cosxt + z0*self._sinxt
+		z1 = z0*self._cosxt - x*self._sinxt	
 
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
@@ -381,11 +473,11 @@ class Model(object):
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
 
-		Bx = Bx1*self.cosxt - Bz1*self.sinxt
-		Bz0 = Bx1*self.sinxt + Bz1*self.cosxt		
+		Bx = Bx1*self._cosxt - Bz1*self._sinxt
+		Bz0 = Bx1*self._sinxt + Bz1*self._cosxt		
 
-		Bx0 = Bx*self.cosxp - By1*self.sinxp
-		By0 = By1*self.cosxp + Bx*self.sinxp	
+		Bx0 = Bx*self._cosxp - By1*self._sinxp
+		By0 = By1*self._cosxp + Bx*self._sinxp	
 	
 		return Bx0,By0,Bz0
 		
@@ -474,13 +566,13 @@ class Model(object):
 		cosp = np.cos(phi)
 
 		#surprisingly this is slightly (~20%) quicker than 
-		#x = r*sint*np.cos(phi - self.dipole_shift) etc.
-		x = r*sint*(cosp*self.cosxp + sinp*self.sinxp)
-		y1 = r*sint*(sinp*self.cosxp - cosp*self.sinxp)
+		#x = r*sint*np.cos(phi - self._dipole_shift) etc.
+		x = r*sint*(cosp*self._cosxp + sinp*self._sinxp)
+		y1 = r*sint*(sinp*self._cosxp - cosp*self._sinxp)
 		z = r*cost
 		
-		x1 = x*self.cosxt + z*self.sinxt
-		z1 = z*self.cosxt - x*self.sinxt	
+		x1 = x*self._cosxt + z*self._sinxt
+		z1 = z*self._cosxt - x*self._sinxt	
 	
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
@@ -541,11 +633,11 @@ class Model(object):
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
 		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
 
-		Bx = Bx1*self.cosxt - Bz1*self.sinxt
-		Bz = Bx1*self.sinxt + Bz1*self.cosxt		
+		Bx = Bx1*self._cosxt - Bz1*self._sinxt
+		Bz = Bx1*self._sinxt + Bz1*self._cosxt		
 
-		Bx2 = Bx*self.cosxp - By1*self.sinxp
-		By2 = By1*self.cosxp + Bx*self.sinxp	
+		Bx2 = Bx*self._cosxp - By1*self._sinxp
+		By2 = By1*self._cosxp + Bx*self._sinxp	
 
 		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost
 		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint
@@ -735,31 +827,31 @@ class Model(object):
 		zc -= np.int(check2)
 		
 		#do the integration
-		beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho)
-		beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho)
+		beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho)
+		beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho)
 		if (abs_z > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-							*np.sinh(self.d*self.lambda_int_brho[zc]) \
-							*np.exp(-abs_z*self.lambda_int_brho[zc]) \
-							/self.lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0 *self.beselj_z_r0_0[zc] \
-							*np.sinh(self.d*self.lambda_int_bz[zc]) \
-							*np.exp(-abs_z*self.lambda_int_bz[zc]) \
-							/self.lambda_int_bz[zc]  
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+							*np.sinh(self.d*self._lambda_int_brho[zc]) \
+							*np.exp(-abs_z*self._lambda_int_brho[zc]) \
+							/self._lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0 *self._beselj_z_r0_0[zc] \
+							*np.sinh(self.d*self._lambda_int_bz[zc]) \
+							*np.exp(-abs_z*self._lambda_int_bz[zc]) \
+							/self._lambda_int_bz[zc]  
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
 			if z < 0:
 				Brho = -Brho
 		else:
-			brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-							*(np.sinh(z*self.lambda_int_brho[zc]) \
-							*np.exp(-self.d*self.lambda_int_brho[zc])) \
-							/self.lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0  *self.beselj_z_r0_0[zc] \
-							*(1.0 -np.cosh(z*self.lambda_int_bz[zc]) \
-							*np.exp(-self.d*self.lambda_int_bz[zc])) \
-							/self.lambda_int_bz[zc]
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)#
-		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+							*(np.sinh(z*self._lambda_int_brho[zc]) \
+							*np.exp(-self.d*self._lambda_int_brho[zc])) \
+							/self._lambda_int_brho[zc]
+			bz_int_funct   = beselj_z_rho1_0  *self._beselj_z_r0_0[zc] \
+							*(1.0 -np.cosh(z*self._lambda_int_bz[zc]) \
+							*np.exp(-self.d*self._lambda_int_bz[zc])) \
+							/self._lambda_int_bz[zc]
+			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)#
+		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
 
 		return Brho,Bz
 
@@ -806,31 +898,31 @@ class Model(object):
 				for zi in range(0,n_ind_case):
 					ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
 
-					beselj_rho_rho1_1 = j1(self.lambda_int_brho[zc]*rho[ind_for_integral])
-					beselj_z_rho1_0   = j0(self.lambda_int_bz[zc]*rho[ind_for_integral] )
+					beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho[ind_for_integral])
+					beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho[ind_for_integral] )
 					if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-										*np.sinh(self.d*self.lambda_int_brho[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_brho[zc]) \
-										/self.lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
-										*np.sinh(self.d*self.lambda_int_bz[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self.lambda_int_bz[zc]) \
-										/self.lambda_int_bz[zc]
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
+						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										*np.sinh(self.d*self._lambda_int_brho[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										/self._lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										*np.sinh(self.d*self._lambda_int_bz[zc]) \
+										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										/self._lambda_int_bz[zc]
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
 						if z[ind_for_integral] < 0:
 							Brho[ind_for_integral] = -Brho[ind_for_integral]
 					else:
-						brho_int_funct = beselj_rho_rho1_1*self.beselj_rho_r0_0[zc] \
-										*(np.sinh(z[ind_for_integral]*self.lambda_int_brho[zc]) \
-										*np.exp(-self.d*self.lambda_int_brho[zc])) \
-										/self.lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self.beselj_z_r0_0[zc] \
-										*(1.0 -np.cosh(z[ind_for_integral]*self.lambda_int_bz[zc]) \
-										*np.exp(-self.d*self.lambda_int_bz[zc])) \
-										/self.lambda_int_bz[zc]  
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self.dlambda_brho)
-					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self.dlambda_bz)
+						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										*(np.sinh(z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										*np.exp(-self.d*self._lambda_int_brho[zc])) \
+										/self._lambda_int_brho[zc]
+						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										*(1.0 -np.cosh(z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										*np.exp(-self.d*self._lambda_int_bz[zc])) \
+										/self._lambda_int_bz[zc]  
+						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
+					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
 		
 		return Brho,Bz			
 	

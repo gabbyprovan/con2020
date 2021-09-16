@@ -41,7 +41,7 @@ def _RCrossings(doy,r,r0,r1):
 	
 	
 	
-def Test(Edwards=True):
+def Test():
 	'''
 	Run a quick test to see if the model works.
 	
@@ -77,7 +77,7 @@ def Test(Edwards=True):
 
 	#call the model code
 	print('Calling Model')
-	M = Model(Edwards=Edwards,CartesianIn=False,CartesianOut=False,mu_i=149.9)
+	M = Model(CartesianIn=False,CartesianOut=False,mu_i=149.9)
 	B = M.Field(r,theta,phi)
 	
 	#get the r0/r1 crossings
