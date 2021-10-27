@@ -86,7 +86,7 @@ The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the numb
 | `r1__outer_rj`                            | `r1`            | `51.4`        | Outer edge of the current sheet in R<sub>j</sub>.            |
 | `d__cs_half_thickness_rj`                 | `d`             | `3.6`         | Current sheet half thickness in R<sub>j</sub>.               |
 | `xt__cs_tilt_degs`                        | `xt`            | `9.3`         | Tilt angle of the current sheet away from the SIII _z_-axis in degrees. |
-| `xp__cs_rhs_azimuthal_angle_of_tilt_degs` | `xp`            | `-24.2`       | (Right-Handed) Longitude towards which the current sheet is tilted in degrees. |
+| `xp__cs_rhs_azimuthal_angle_of_tilt_degs` | `xp`            | 155.8         | (Right-Handed) Longitude towards which the current sheet is tilted in degrees. |
 | `equation_type`                           |                 | `'hybrid'`    | Which method to use, can be:<br />`'analytic'`  - use only the analytical equations<br />`'integral'` - numerically integrate the equations<br />`'hybrid' `- a combination of analytical and integration (default) |
 | `error_check`                             |                 | `True`        | Check errors on inputs the the `Field()` member function - set to `False` at your own risk for a slight speedup. |
 | `CartesianIn`                             |                 | `True`        | If `True` (default) then the input coordinates are expected to be in Cartesian right-handed SIII coordinates. If `False` then right-handed spherical polar SIII coordinates will be expected. |
@@ -103,4 +103,3 @@ The `con2020.Test()` function should produce the following:
 - Connerney, J. E. P., Timmins, S., Herceg, M., & Joergensen, J. L. (2020). A Jovian magnetodisc model for the Juno era. *Journal of Geophysical Research: Space Physics*, 125, e2020JA028138. https://doi.org/10.1029/2020JA028138
 - Connerney, J. E. P., Acuña, M. H., and Ness, N. F. (1981), Modeling the Jovian current sheet and inner magnetosphere, *J. Geophys. Res.*, 86( A10), 8370– 8384, doi:[10.1029/JA086iA10p08370](https://doi.org/10.1029/JA086iA10p08370).
 - Edwards T.M., Bunce E.J., Cowley S.W.H. (2001), A note on the vector potential of Connerney et al.'s model of the equatorial current sheet in Jupiter's magnetosphere, *Planetary and Space Science,*49, 1115-1123,https://doi.org/10.1016/S0032-0633(00)00164-1.
-  

@@ -105,7 +105,7 @@ class Model(object):
 					'r1'			: 51.4,
 					'd'				: 3.6,
 					'xt'			: 9.3,
-					'xp'			: -24.2,
+					'xp'			: 155.8,
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
@@ -189,7 +189,9 @@ class Model(object):
 	@xp.setter
 	def xp(self,value):
 		self._xp = value
-		self._dipole_shift = self._xp*self._Deg2Rad # xp is longitude of the current sheet
+		#the shift below has something to do with the way that the 
+		#rotation angle is defined
+		self._dipole_shift = (self._xp - 180.0)*self._Deg2Rad # xp is longitude of the current sheet
 		self._cosxp = np.cos(self._dipole_shift)
 		self._sinxp = np.sin(self._dipole_shift)	
 	
