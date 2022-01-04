@@ -68,7 +68,7 @@ x = 5.0
 y = 10.0
 z = 6.0
 Bcart = def_model.Field(x,y,z)
-
+(Result Bxyz=[15.57977074, 36.88229249, 63.02051163 nT)
 #Example 2: the model at an array of positions of spherical polar coordinates
 r = np.array([10.0,20.0,30.0])					#radial distance in Rj
 theta = np.array([30.0,35.0,40.0])*np.pi/180.0	#colatitude in radians 
