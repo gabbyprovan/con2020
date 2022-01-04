@@ -68,12 +68,19 @@ x = 5.0
 y = 10.0
 z = 6.0
 Bcart = def_model.Field(x,y,z)
-(Result Bxyz=[15.57977074, 36.88229249, 63.02051163] nT)
+Result:
+Bxyz=[15.57977074, 36.88229249, 63.02051163] nT
+Calculated using the default con2020 model keywords and the hybrid approximation.
+
 #Example 2: the model at an array of positions of spherical polar coordinates
-r = np.array([10.0,20.0,30.0])					#radial distance in Rj
-theta = np.array([30.0,35.0,40.0])*np.pi/180.0	#colatitude in radians 
-phi = np.array([90.0,95.0,100.0])*np.pi/180.0	#east longitude in radians
+r = np.array([10.0,20.0])					#radial distance in Rj
+theta = np.array([30.0,35.0])*np.pi/180.0	#colatitude in radians 
+phi = np.array([90.0,95.0])*np.pi/180.0	#east longitude in radians
 Bpol = sph_model.Field(r,theta,phi)
+Result:
+Spherical polar Brtp =[63.32354453 ,31.15790459] [-21.01051861 , -6.86773727] [-3.61151705, -2.72626057] nT
+Cartersian      Bxyz =[61151705, 1.6486016], [13.4661294,  12.43672946] [65.34505753, 29.46223351] nT
+Calculated using the default con2020 model keywords and the hybrid approximation.
 ```
 
 The output will be a `numpy.ndarray` with a shape `(n,3)`, where `n` is the number of input coordinates, `B[:,0]` corresponds to either `Bx` or `Br`; `B[:,1]` corresponds to `By` or `Btheta`; and `B[:,2]` corresponds to either `Bz` or `Bphi`.  A full list of model keywords is shown below:
