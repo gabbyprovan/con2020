@@ -8,7 +8,7 @@ https://github.com/marissav06/con2020_idl
 Or for Matlab:
 https://github.com/marissav06/con2020_matlab
 
-A PDF documentation file is available here: [con2020_final_code_documentation_sept13_2021.pdf](https://github.com/marissav06/con2020_idl/files/7157389/con2020_final_code_documentation_sept13_2021.pdf). It describes the Connerney current sheet model and general code development (equations used, numerical integration assumptions, accuracy testing, etc.). Details specific to the Python code are provided in this readme file.
+A PDF documentation file is available here: [con2020_final_code_documentation_june9_2022.pdf][con2020_final_code_documentation_june9_2022 (10).pdf](https://github.com/gabbyprovan/con2020/files/8869078/con2020_final_code_documentation_june9_2022.10.pdf). It describes the Connerney current sheet model and general code development (equations used, numerical integration assumptions, accuracy testing, etc.). Details specific to the Python code are provided in this readme file.
 
 These codes were developed by Fran Bagenal, Marty Brennan, Matt James, Gabby Provan, Marissa Vogt, and Rob Wilson, with thanks to Jack Connerney and Masafumi Imai. They are intended for use by the Juno science team and other members of the planetary magnetospheres community. Our contact information is in the documentation PDF file.
 
