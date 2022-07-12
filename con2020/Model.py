@@ -26,9 +26,9 @@ class Model(object):
 			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 MA) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
-			pass to the next, where Table 2 provides radial current intensity
+			pass to the next, where Table 2 (units of MA) provides radial current intensity
 			values for 23 of the first 24
-			perijoves (units mistakenly given as nT in  Table 2)
+			perijoves (units mistakenly given in nT in  article text)
 		r0__inner_rj (r0) : float
 			Inner edge of current disk in Rj
 		r1__outer_rj (r1) : float
