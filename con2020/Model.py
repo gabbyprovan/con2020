@@ -22,12 +22,12 @@ class Model(object):
 		=================
 		mu_i_div2__current_density_nT (mu_i): float
 			mu0i0/2 term (current sheet current density), in nT
-		i_rho__radial_current_density_MA (i_rho) : float
+		i_rho__radial_current_MA (i_rho) : float
 			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 MA) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
 			pass to the next, where Table 2 provides radial current 
-			density values for 23 of the first 24
+			values for 23 of the first 24
 			perijoves (units mistakenly given as nT in  Table 2)
 		r0__inner_rj (r0) : float
 			Inner edge of current disk in Rj
