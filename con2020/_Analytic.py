@@ -282,25 +282,37 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 	
 	#choose scalar or vectorized version of the code
 	if np.size(rho) == 1:
-		if rho >= a:
-			Brho,Bz = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
-		else:
-			Brho,Bz = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
-			
+		
+		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
+		BrhoS,BzS = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
+
+ 
+		delta_pcs=0.1
+		tanh_calc =np.tanh((rho-a)/delta_pcs)
+		Brho=BrhoS*((1-tanh_calc)/2.)+BrhoL*((1+tanh_calc)/2.)
+		Bz=BzS*((1-tanh_calc)/2.)+BzL*((1+tanh_calc)/2.)
+
 	else:
 
-		#use rho and a to decide whether to use large or small approx
-		lrg = np.where(rho >= a)[0]
-		sml = np.where(rho < a)[0]
+		
 		
 		#create output arrays
-		Brho = np.zeros(rho.size,dtype='float64')
-		Bz = np.zeros(rho.size,dtype='float64')
+		BrhoL = np.zeros(rho.size,dtype='float64')
+		BzL = np.zeros(rho.size,dtype='float64')
+		BrhoS = np.zeros(rho.size, dtype='float64')
+		BzS = np.zeros(rho.size, dtype='float64')
+		
 		
 		#fill them
-		Brho[lrg],Bz[lrg] = _LargeRhoApproxEdwards(rho[lrg],z[lrg],zmd[lrg],zpd[lrg],mui2,a2,D)
-		Brho[sml],Bz[sml] = _SmallRhoApproxEdwards(rho[sml],zmd[sml],zpd[sml],mui2,a2)
-	
+		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
+		BrhoS,BzS = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
+
+ 
+		delta_pcs=0.1
+		tanh_calc =np.tanh((rho-a)/delta_pcs)
+		Brho=BrhoS*((1-tanh_calc)/2.)+BrhoL*((1+tanh_calc)/2.)
+		Bz=BzS*((1-tanh_calc)/2.)+BzL*((1+tanh_calc)/2.)
+
 	return Brho,Bz
 	
 def _Analytic(rho,z,D,a,mui2,Edwards=True):
