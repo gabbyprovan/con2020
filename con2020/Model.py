@@ -54,7 +54,12 @@ class Model(object):
 			right-handed System III coordinates. Otherwise, the magnetic 
 			field components produced will be radial, meridional and 
 			azimuthal.
-
+		DeltaRho : float
+			Scale distance to smooth the transition from small to 
+			large rho approximation.
+		DeltaZ : float
+			Stan's smoothing scale in z-direction (Rj).
+			
 		Returns
 		========
 		model : object
@@ -109,7 +114,9 @@ class Model(object):
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
-					'CartesianOut'	: True}
+					'CartesianOut'	: True,
+					'DeltaRho'		: 1.0,
+					'DeltaZ'		: 0.1}
 					
 		#list the long names
 		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
@@ -423,7 +430,7 @@ class Model(object):
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
 		abs_z1 = np.abs(z1)
-			
+		print(x1,y1,z1)
 		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
 		
 	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
@@ -772,13 +779,13 @@ class Model(object):
 		'''
 		
 		#calculate the analytic solution first for Brho and Bz
-		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 		
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
@@ -967,7 +974,7 @@ class Model(object):
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
@@ -1012,7 +1019,7 @@ class Model(object):
 				Brho,Bz = self._IntegralScalar(rho,abs_z,z)
 			else:
 				#analytical
-				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 
 		else:
 			#this would be the vectorized version
@@ -1028,14 +1035,14 @@ class Model(object):
 				Brho[Iint],Bz[Iint] = self._IntegralVector(rho[Iint],abs_z[Iint],z[Iint])
 			
 			if Iana.size > 0:
-				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
+				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 
 
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin

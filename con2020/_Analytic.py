@@ -102,7 +102,7 @@ def _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 
 	return Brho,Bz
 	
-def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
+def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D,DeltaZ):
 	'''
 	Small rho approximations calculated using equations 13a and 13b of 
 	Edwards et al 2001.
@@ -125,6 +125,8 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
 		Inner/Outer edge of current disk squared (Rj^2).
 	D : float
 		Current sheet half-thickness (Rj).
+	DeltaZ : float
+		Stan's smoothing scale in z-direction (Rj).
 			
 	Returns
 	=======
@@ -146,7 +148,10 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
 	#equation 13a
 	terma0 = (1/rho)*(f1 - f2)
 	terma1 = (rho*a2/4)*(1/f2cubed - 1/f1cubed)
-	terma2 = (2.0/rho)*z.clip(max=D,min=-D)
+	#terma2 = (2.0/rho)*z.clip(max=D,min=-D)
+	tanhp = np.tanh((z+D)/DeltaZ)
+	tanhm = np.tanh((z-D)/DeltaZ)
+	terma2 = (1.0/rho)*(D*z*(tanhp+tanhm) + 0.5*(D*D + z*z)*(tanhp-tanhm))
 	Brho = mui2*(terma0 + terma1 + terma2)
 	
 	#equation 13b
@@ -156,7 +161,7 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
 	
 	return Brho,Bz
 	
-def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
+def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D,DeltaZ):
 	'''
 	Small rho approximations calculated using equations A7 and A8 of 
 	Connerney et al 1981.
@@ -179,7 +184,10 @@ def _LargeRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 		Inner/Outer edge of current disk squared (Rj^2).
 	D : float
 		Current sheet half-thickness (Rj).
-	
+	DeltaZ : float
+		Stan's smoothing scale in z-direction (Rj). Not used in this
+		case.
+
 	Returns
 	=======
 	Brho : float
@@ -246,7 +254,7 @@ def _AnalyticOriginal(rho,z,D,a,mui2):
 	return Brho,Bz
 	
 	
-def _AnalyticEdwards(rho,z,D,a,mui2):
+def _AnalyticEdwards(rho,z,D,a,mui2,DeltaRho,DeltaZ):
 	'''
 	This function will calculate the model using the Edwards et al., 
 	2001 equations. 
@@ -265,6 +273,11 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 		Inner edge of the current sheet in Rj.
 	mui2 : float
 		mu_0 * I_0/2 - current sheet current density in nT.
+	DeltaRho : float
+		Scale distance to smooth the transition from small to 
+		large rho approximation.
+	DeltaZ : float
+		Stan's smoothing scale in z-direction (Rj).
 		
 	Returns
 	=======
@@ -283,12 +296,11 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 	#choose scalar or vectorized version of the code
 	if np.size(rho) == 1:
 		
-		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
+		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D,DeltaZ)
 		BrhoS,BzS = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
 
  
-		delta_pcs=0.1
-		tanh_calc =np.tanh((rho-a)/delta_pcs)
+		tanh_calc =np.tanh((rho-a)/DeltaRho)
 		Brho=BrhoS*((1-tanh_calc)/2.)+BrhoL*((1+tanh_calc)/2.)
 		Bz=BzS*((1-tanh_calc)/2.)+BzL*((1+tanh_calc)/2.)
 
@@ -304,18 +316,18 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 		
 		
 		#fill them
-		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
+		BrhoL,BzL = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D,DeltaZ)
 		BrhoS,BzS = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
 
  
 		delta_pcs=0.1
-		tanh_calc =np.tanh((rho-a)/delta_pcs)
+		tanh_calc =np.tanh((rho-a)/DeltaRho)
 		Brho=BrhoS*((1-tanh_calc)/2.)+BrhoL*((1+tanh_calc)/2.)
 		Bz=BzS*((1-tanh_calc)/2.)+BzL*((1+tanh_calc)/2.)
 
 	return Brho,Bz
 	
-def _Analytic(rho,z,D,a,mui2,Edwards=True):
+def _Analytic(rho,z,D,a,mui2,DeltaRho,DeltaZ,Edwards=True):
 	'''
 	Calculate the analytical version of the model.
 	
@@ -345,12 +357,12 @@ def _Analytic(rho,z,D,a,mui2,Edwards=True):
 	'''
 	
 	if Edwards:
-		return _AnalyticEdwards(rho,z,D,a,mui2)
+		return _AnalyticEdwards(rho,z,D,a,mui2,DeltaRho,DeltaZ)
 	else:
 		return _AnalyticOriginal(rho,z,D,a,mui2)
 
 
-def _Finite(rho,z,D,a,mui2,Edwards=True):
+def _Finite(rho,z,D,a,mui2,DeltaRho,DeltaZ,Edwards=True):
 	'''
 	Calculate the analytical version of the model using the outer edge
 	of the current sheet - this provides a field to subtract from that
@@ -388,11 +400,11 @@ def _Finite(rho,z,D,a,mui2,Edwards=True):
 	if Edwards:
 		#the following function will split it into large and small rho 
 		#approximations as appropriate
-		return _AnalyticEdwards(rho,z,D,a,mui2)
+		return _AnalyticEdwards(rho,z,D,a,mui2,DeltaRho,DeltaZ)
 	else:
 		return _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D)
 		
-def _FiniteEdwards(rho,z,D,a,mui2):
+def _FiniteEdwards(rho,z,D,a,mui2,DeltaRho,DeltaZ):
 	'''
 	Calculate the Edwards et al version of the model using the outer edge
 	of the current sheet - this provides a field to subtract from that
@@ -423,7 +435,7 @@ def _FiniteEdwards(rho,z,D,a,mui2):
 		array of B in z direction
 	
 	'''
-	return _AnalyticEdwards(rho,z,D,a,mui2)
+	return _AnalyticEdwards(rho,z,D,a,mui2,DeltaRho,DeltaZ)
 
 def _FiniteOriginal(rho,z,D,a,mui2):
 	'''
