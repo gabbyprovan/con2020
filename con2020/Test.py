@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from .Model import Model
 import time
+from .lmic import ThetaIonosphere,PedersenCurrent,BphiIonosphere,BphiLMIC,AngularVelocityRatio
 
 def _RCrossings(doy,r,r0,r1):
 	'''
@@ -496,3 +497,106 @@ def TestBessel(rho,z):
 	ax.plot(m.lambda_int_brho[zc],brho_int_funct,label=r'$\rho$')
 	ax.plot(m.lambda_int_bz[zc],bz_int_funct,label=r'$z$')
 	ax.legend()
+
+def PlotLMIC(fig=None,maps=[1,1,0,0]):
+	
+
+	#define parameters for CAN model
+	r0 = 7.8
+	r1 = 51.4
+	mui2 = 139.6
+	D = 3.6
+	deltarho = 1.0
+	deltaz = 0.1
+
+	#dipole parameter
+	g10 = 410993.4
+	g11 = -71305.9
+	h11 =  20958.4
+	g = np.sqrt(g10**2 + g11**2 + h11**2)
+
+	#LMIC parameters
+	dtor = np.pi/180.0
+	wO_open = 0.1
+	wO_om = 0.35
+	thetamm = 16.1
+	dthetamm = 0.5
+	thetaoc = 10.716
+	dthetaoc = 0.125
+
+	#ionospheric radius
+	Ri = 67350000.0
+	Rj = 71492000.0
+	ri = Ri/Rj
+
+	#thetai
+	n = 1000
+	thetadeg = np.linspace(0.0,20.0,n,dtype='float64')
+	thetai = thetadeg*dtor
+	
+
+	#calculate angular velocity ratio
+	print('Calculating angular velocity ratio')
+	wO = AngularVelocityRatio(thetai,wO_open,wO_om,thetamm,dthetamm,thetaoc,dthetaoc)
+
+	#calculate pedersen current
+	print('Calculating Pedersen current')
+	IhP = PedersenCurrent(thetai,g,wO_open,wO_om,thetamm,dthetamm,thetaoc,dthetaoc)/1e6
+
+	#calculate Bphi at the ionosphere
+	print('Calculating Bphi')
+	Bp = BphiLMIC(ri,thetai,g,r0,r1,mui2,D,deltarho,deltaz,
+					wO_open,wO_om,thetamm,dthetamm,thetaoc,dthetaoc)
+	Bpi = BphiIonosphere(thetai,g,wO_open,wO_om,thetamm,dthetamm,thetaoc,dthetaoc)
+
+
+	#plot colors
+	coltail = [0.776,0.824,0.965]
+	colom = [1.0,1.0,0.702]
+	colmm = [1.0,0.702,0.702]
+	colboundary = [0.7,1.0,0.7]
+	colim = [1.0,1.0,1.0]
+	cols = [coltail,colboundary,colom,colmm,colim]
+	labs = ['Tail','','OM','MM','IM']
+	x = np.array([0.0,thetaoc-dthetaoc,thetaoc+dthetaoc,thetamm-dthetamm,thetamm+dthetamm,20.0])
+
+	plt.figure(figsize=(8,11))
+	
+	ax0 = plt.subplot2grid((3,1),(0,0))
+	ax0.plot(thetadeg,wO,color='black')
+	ax0.set_ylim(0.0,1.2)
+	ax0.set_xlim(thetadeg[0],thetadeg[-1])
+	ax0.set_xlabel(r'$\theta_i$ ($^\circ$)')
+	ax0.set_ylabel(r'$\omega_i/\Omega_J$')
+
+	ax1 = plt.subplot2grid((3,1),(1,0))
+	ax1.plot(thetadeg,IhP,color='black')
+	ax1.set_ylim(0.0,60.0)
+	ax1.set_xlim(thetadeg[0],thetadeg[-1])
+	ax1.set_xlabel(r'$\theta_i$ ($^\circ$)')
+	ax1.set_ylabel(r'$I_{hP}(\theta_i)$ (MA)')
+
+	ax2 = plt.subplot2grid((3,1),(2,0))
+	ax2.plot(thetadeg,Bpi,color='black')
+	ax2.plot(thetadeg,Bp,color='black',linestyle=':')
+	ax2.set_ylim(-650.0,0.0)
+	ax2.set_xlim(thetadeg[0],thetadeg[-1])
+	ax2.set_xlabel(r'$\theta_i$ ($^\circ$)')
+	ax2.set_ylabel(r'$B_{\phi}$ (nT)')
+
+	axs = [ax0,ax1,ax2]
+
+	for ax in axs:
+
+		ylim = ax.get_ylim()
+		yf = [ylim[0],ylim[0],ylim[1],ylim[1]]
+		for i in range(0,len(x)-1):
+			xf = [x[i],x[i+1],x[i+1],x[i]]
+			ax.fill(xf,yf,color=cols[i])
+			ax.text(0.5*(x[i] + x[i+1]),0.95*(ylim[1]-ylim[0])+ylim[0],labs[i],ha='center',va='center')
+
+		ax.vlines(x[1:3],ylim[0],ylim[1],color=[0.0,1.0,0.0])
+		ax.vlines(x[3:5],ylim[0],ylim[1],color=[1.0,0.0,0.0])
+
+		
+

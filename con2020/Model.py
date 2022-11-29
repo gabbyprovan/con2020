@@ -3,7 +3,7 @@ from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
 from ._Analytic import _AnalyticEdwards,_FiniteEdwards
 from ._Integrate import _Integrate
-
+from .lmic import BphiLMIC
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -116,7 +116,15 @@ class Model(object):
 					'CartesianIn'	: True,
 					'CartesianOut'	: True,
 					'DeltaRho'		: 1.0,
-					'DeltaZ'		: 0.1}
+					'DeltaZ'		: 0.1,
+					'azfunc'		: 'connerney',
+					'g' 			: 417659.3836476442,
+					'wO_open'		: 0.1,
+					'wO_om'			: 0.35,
+					'thetamm'		: 16.1,
+					'dthetamm'		: 0.5,
+					'thetaoc'		: 10.716,
+					'dthetaoc'		: 0.125}
 					
 		#list the long names
 		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
@@ -284,6 +292,97 @@ class Model(object):
 		self._err_chk = value
 		if hasattr(self,'_CartIn'):
 			self._SetInputConv()
+
+	@property
+	def azfunc(self):
+		return self._azfunc
+	
+	@azfunc.setter
+	def azfunc(self,value):
+		valuel = value.lower()
+		if not valuel in ['lmic','connerney']:
+			raise SystemExit('Invalid Azimuthal Field Function: {:s}'.format(value))
+		if valuel == 'lmic':
+			self._azfunc = valuel
+			self._Bphi = self.BphiLMIC
+		elif valuel == 'connerney': 
+			self._azfunc = valuel
+			self._Bphi = self._BphiConnerney
+		else:
+			raise SystemExit('If you see this message, something went very wrong!')
+
+	@property
+	def DeltaRho(self):
+		return self._DeltaRho
+
+	@DeltaRho.setter
+	def DeltaRho(self,value):
+		self._DeltaRho = value
+
+	@property
+	def DeltaZ(self):
+		return self._DeltaZ
+
+	@DeltaZ.setter
+	def DeltaZ(self,value):
+		self._DeltaZ = value
+
+	@property
+	def wO_open(self):
+		return self._wO_open		
+	
+	@wO_open.setter
+	def wO_open(self,value):
+		self._wO_open = value
+
+	@property
+	def wO_om(self):
+		return self._wO_om	
+	
+	@wO_open.setter
+	def wO_om(self,value):
+		self._wO_om = value
+	
+	@property
+	def thetamm(self):
+		return self._thetamm
+	
+	@thetamm.setter
+	def thetamm(self,value):
+		self._thetamm = value
+
+	@property
+	def dthetamm(self):
+		return self._dthetamm
+	
+	@dthetamm.setter
+	def dthetamm(self,value):
+		self._dthetamm = value
+
+	@property
+	def thetaoc(self):
+		return self._thetaoc
+	
+	@thetaoc.setter
+	def thetaoc(self,value):
+		self._thetaoc = value
+
+	@property
+	def dthetaoc(self):
+		return self._dthetaoc
+	
+	@dthetaoc.setter
+	def dthetaoc(self,value):
+		self._dthetaoc = value
+
+	@property
+	def g(self):
+		return self._g
+	
+	@g.setter
+	def g(self,value):
+		self._g = value
+
 		
 	def _SetInputConv(self):
 		'''
@@ -430,7 +529,7 @@ class Model(object):
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
 		abs_z1 = np.abs(z1)
-		print(x1,y1,z1)
+
 		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
 		
 	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
@@ -709,7 +808,33 @@ class Model(object):
 		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
-	def _Bphi(self,rho,abs_z,z):
+	def BphiLMIC(self,rho,abs_z,z):
+		'''
+		Leicester Magnetosphere Ionosphere Coupling model for Bphi.
+
+		Inputs
+		======
+		rho : float
+			distance in the x-z plane of the current sheet in Rj.
+		abs_z : float
+			absolute value of the z-coordinate (not actually used)
+		z : float
+			signed version of the z-coordinate
+			
+		Returns
+		=======
+		Bphi : float
+			Azimuthal component of the magnetic field.
+
+		'''
+		r = np.sqrt(rho*rho + z*z)
+		theta = np.arcsin(rho/r)
+		return BphiLMIC(r,theta,self.g,self.r0,self.r1,self.mu_i,self.d,self.DeltaRho,
+						self.DeltaZ,self.wO_open,self.wO_om,self.thetamm,
+						self.dthetamm,self.thetaoc,self.dthetaoc)
+
+
+	def _BphiConnerney(self,rho,abs_z,z):
 		'''
 		New to CAN2020 (not included in CAN1981): radial current 
 		produces an azimuthal field, so Bphi is nonzero
