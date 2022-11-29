@@ -20,9 +20,9 @@ class Model(object):
 
 		Keyword Arguments (shorthand keywords in brackets)
 		=================
-		mu_i_div2__current_density_nT (mu_i): float
-			mu0i0/2 term (current sheet current density), in nT
-		i_rho__radial_current_intensity_MA (i_rho) : float
+		mu_i_div2__current_parameter_nT (mu_i): float
+			mu0i0/2 term (current sheet parameter), in nT
+		i_rho__radial_current_MA (i_rho) : float
 			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 MA) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
@@ -54,12 +54,41 @@ class Model(object):
 			right-handed System III coordinates. Otherwise, the magnetic 
 			field components produced will be radial, meridional and 
 			azimuthal.
+		azfunc : str
+			'connerney' to use the Connerney et al., 2020 model for Bphi
+			'lmic' to use the L-MIC model for Bphi
+		g : float
+			Dipole coefficient, nT.
+		r0 : float
+			Inner edge of the current sheet, Rj.
+		r1 : float
+			Outer edge of the current sheet, Rj.
+		mui2 : float
+			mu_0 I_0/2 parameter (nT).
+		D : float
+			current sheet half thickness
 		DeltaRho : float
-			Scale distance to smooth the transition from small to 
-			large rho approximation.
+			Scale length over which to smooth the transition
+			from small to large rho approximations
 		DeltaZ : float
-			Stan's smoothing scale in z-direction (Rj).
-			
+			Scale length over which the large rho approx is
+			smoothed across +/-D boundary.
+		wO_om : float
+			Angular velocity of plasma on open field lines (~0.091)
+		wO_om : float
+			Angular velocity w of plasma divided by angular velocity of 
+			Jupiter in the outer magnetosphere (0.25 for low and 0.5 for
+			high velocity models)
+		thetamm : float
+			central colatitude of the middle magnetosphere (deg)
+		dthetamm : float
+			colatitudinal width of the middle magnetosphere (deg)
+		thetaoc : float
+			colatitude of the open-closed field line boundary (deg)
+		dthetaoc : float
+			colatitudinal width of the OCB (deg)
+
+
 		Returns
 		========
 		model : object
@@ -127,13 +156,13 @@ class Model(object):
 					'dthetaoc'		: 0.125}
 					
 		#list the long names
-		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
+		longnames = {	'mu_i'	: 'mu_i_div2__current_parameter_nT',
 						'r0'	: 'r0__inner_rj',
 						'r1'	: 'r1__outer_rj',
 						'd'		: 'd__cs_half_thickness_rj',
 						'xt'	: 'xt__cs_tilt_degs',
 						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
-						'i_rho'	: 'i_rho__radial_current_density_MA'		  }
+						'i_rho'	: 'i_rho__radial_current_MA'		  }
 						
 		#check input kwargs
 		#for those which exist (either in long or short name form) add
