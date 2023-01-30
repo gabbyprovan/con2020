@@ -3,7 +3,7 @@ from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
 from ._Analytic import _AnalyticEdwards,_FiniteEdwards
 from ._Integrate import _Integrate
-
+from .lmic import BphiLMIC
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -20,9 +20,9 @@ class Model(object):
 
 		Keyword Arguments (shorthand keywords in brackets)
 		=================
-		mu_i_div2__current_density_nT (mu_i): float
-			mu0i0/2 term (current sheet current density), in nT
-		i_rho__radial_current_intensity_MA (i_rho) : float
+		mu_i_div2__current_parameter_nT (mu_i): float
+			mu0i0/2 term (current sheet parameter), in nT
+		i_rho__radial_current_MA (i_rho) : float
 			radial current term from Connerney et al., 2020
 			NOTE: The default value (16.7 MA) is the average value from
 			Connerney et al 2020. This value was shown to vary from one 
@@ -54,6 +54,40 @@ class Model(object):
 			right-handed System III coordinates. Otherwise, the magnetic 
 			field components produced will be radial, meridional and 
 			azimuthal.
+		azfunc : str
+			'connerney' to use the Connerney et al., 2020 model for Bphi
+			'lmic' to use the L-MIC model for Bphi
+		g : float
+			Dipole coefficient, nT.
+		r0 : float
+			Inner edge of the current sheet, Rj.
+		r1 : float
+			Outer edge of the current sheet, Rj.
+		mui2 : float
+			mu_0 I_0/2 parameter (nT).
+		D : float
+			current sheet half thickness
+		DeltaRho : float
+			Scale length over which to smooth the transition
+			from small to large rho approximations
+		DeltaZ : float
+			Scale length over which the large rho approx is
+			smoothed across +/-D boundary.
+		wO_om : float
+			Angular velocity of plasma on open field lines (~0.091)
+		wO_om : float
+			Angular velocity w of plasma divided by angular velocity of 
+			Jupiter in the outer magnetosphere (0.25 for low and 0.5 for
+			high velocity models)
+		thetamm : float
+			central colatitude of the middle magnetosphere (deg)
+		dthetamm : float
+			colatitudinal width of the middle magnetosphere (deg)
+		thetaoc : float
+			colatitude of the open-closed field line boundary (deg)
+		dthetaoc : float
+			colatitudinal width of the OCB (deg)
+
 
 		Returns
 		========
@@ -109,16 +143,26 @@ class Model(object):
 					'equation_type'	: 'hybrid',
 					'error_check'	: True,
 					'CartesianIn'	: True,
-					'CartesianOut'	: True}
+					'CartesianOut'	: True,
+					'DeltaRho'		: 1.0,
+					'DeltaZ'		: 0.1,
+					'azfunc'		: 'connerney',
+					'g' 			: 417659.3836476442,
+					'wO_open'		: 0.1,
+					'wO_om'			: 0.35,
+					'thetamm'		: 16.1,
+					'dthetamm'		: 0.5,
+					'thetaoc'		: 10.716,
+					'dthetaoc'		: 0.125}
 					
 		#list the long names
-		longnames = {	'mu_i'	: 'mu_i_div2__current_density_nT',
+		longnames = {	'mu_i'	: 'mu_i_div2__current_parameter_nT',
 						'r0'	: 'r0__inner_rj',
 						'r1'	: 'r1__outer_rj',
 						'd'		: 'd__cs_half_thickness_rj',
 						'xt'	: 'xt__cs_tilt_degs',
 						'xp'	: 'xp__cs_rhs_azimuthal_angle_of_tilt_degs',
-						'i_rho'	: 'i_rho__radial_current_density_MA'		  }
+						'i_rho'	: 'i_rho__radial_current_MA'		  }
 						
 		#check input kwargs
 		#for those which exist (either in long or short name form) add
@@ -277,6 +321,97 @@ class Model(object):
 		self._err_chk = value
 		if hasattr(self,'_CartIn'):
 			self._SetInputConv()
+
+	@property
+	def azfunc(self):
+		return self._azfunc
+	
+	@azfunc.setter
+	def azfunc(self,value):
+		valuel = value.lower()
+		if not valuel in ['lmic','connerney']:
+			raise SystemExit('Invalid Azimuthal Field Function: {:s}'.format(value))
+		if valuel == 'lmic':
+			self._azfunc = valuel
+			self._Bphi = self.BphiLMIC
+		elif valuel == 'connerney': 
+			self._azfunc = valuel
+			self._Bphi = self._BphiConnerney
+		else:
+			raise SystemExit('If you see this message, something went very wrong!')
+
+	@property
+	def DeltaRho(self):
+		return self._DeltaRho
+
+	@DeltaRho.setter
+	def DeltaRho(self,value):
+		self._DeltaRho = value
+
+	@property
+	def DeltaZ(self):
+		return self._DeltaZ
+
+	@DeltaZ.setter
+	def DeltaZ(self,value):
+		self._DeltaZ = value
+
+	@property
+	def wO_open(self):
+		return self._wO_open		
+	
+	@wO_open.setter
+	def wO_open(self,value):
+		self._wO_open = value
+
+	@property
+	def wO_om(self):
+		return self._wO_om	
+	
+	@wO_open.setter
+	def wO_om(self,value):
+		self._wO_om = value
+	
+	@property
+	def thetamm(self):
+		return self._thetamm
+	
+	@thetamm.setter
+	def thetamm(self,value):
+		self._thetamm = value
+
+	@property
+	def dthetamm(self):
+		return self._dthetamm
+	
+	@dthetamm.setter
+	def dthetamm(self,value):
+		self._dthetamm = value
+
+	@property
+	def thetaoc(self):
+		return self._thetaoc
+	
+	@thetaoc.setter
+	def thetaoc(self,value):
+		self._thetaoc = value
+
+	@property
+	def dthetaoc(self):
+		return self._dthetaoc
+	
+	@dthetaoc.setter
+	def dthetaoc(self,value):
+		self._dthetaoc = value
+
+	@property
+	def g(self):
+		return self._g
+	
+	@g.setter
+	def g(self,value):
+		self._g = value
+
 		
 	def _SetInputConv(self):
 		'''
@@ -423,7 +558,7 @@ class Model(object):
 		#some other bits we need for the model
 		rho1 = np.sqrt(x1*x1 + y1*y1)
 		abs_z1 = np.abs(z1)
-			
+
 		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
 		
 	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
@@ -702,7 +837,33 @@ class Model(object):
 		if (np.size(r) != np.size(phi)) or (np.size(r) != np.size(theta)):
 			raise SystemExit ('ERROR: Input coordinate arrays must all be of the same length. Returning...')
 
-	def _Bphi(self,rho,abs_z,z):
+	def BphiLMIC(self,rho,abs_z,z):
+		'''
+		Leicester Magnetosphere Ionosphere Coupling model for Bphi.
+
+		Inputs
+		======
+		rho : float
+			distance in the x-z plane of the current sheet in Rj.
+		abs_z : float
+			absolute value of the z-coordinate (not actually used)
+		z : float
+			signed version of the z-coordinate
+			
+		Returns
+		=======
+		Bphi : float
+			Azimuthal component of the magnetic field.
+
+		'''
+		r = np.sqrt(rho*rho + z*z)
+		theta = np.arcsin(rho/r)
+		return BphiLMIC(r,theta,self.g,self.r0,self.r1,self.mu_i,self.d,self.DeltaRho,
+						self.DeltaZ,self.wO_open,self.wO_om,self.thetamm,
+						self.dthetamm,self.thetaoc,self.dthetaoc)
+
+
+	def _BphiConnerney(self,rho,abs_z,z):
 		'''
 		New to CAN2020 (not included in CAN1981): radial current 
 		produces an azimuthal field, so Bphi is nonzero
@@ -772,13 +933,13 @@ class Model(object):
 		'''
 		
 		#calculate the analytic solution first for Brho and Bz
-		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 		
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
@@ -967,7 +1128,7 @@ class Model(object):
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
@@ -1012,7 +1173,7 @@ class Model(object):
 				Brho,Bz = self._IntegralScalar(rho,abs_z,z)
 			else:
 				#analytical
-				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 
 		else:
 			#this would be the vectorized version
@@ -1028,14 +1189,14 @@ class Model(object):
 				Brho[Iint],Bz[Iint] = self._IntegralVector(rho[Iint],abs_z[Iint],z[Iint])
 			
 			if Iana.size > 0:
-				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
+				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i,self.DeltaRho,self.DeltaZ)
 
 
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i,self.DeltaRho,self.DeltaZ)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
