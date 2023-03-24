@@ -202,15 +202,15 @@ class Model(object):
 				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
 		
 		#now do the checks
-	
-		ckeys = ['mu_i','r0','r1','d','xt']
-		for k in ckeys:
-			x = getattr(self,k)
-			if (x <= 0) or (np.isfinite(x) == False):
-				raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
+		if self.error_check:
+			ckeys = ['mu_i','r0','r1','d','xt']
+			for k in ckeys:
+				x = getattr(self,k)
+				if (x <= 0) or (np.isfinite(x) == False):
+					raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
 
-		if (np.isfinite(self.xp) == False):
-			raise SystemExit("'xp' should be finite")	
+			if (np.isfinite(self.xp) == False):
+				raise SystemExit("'xp' should be finite")	
 			
 		#set the analytic function to use
 		self._AnalyticFunc = _AnalyticEdwards
