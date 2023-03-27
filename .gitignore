@@ -102,3 +102,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Rob specific
+git_readme_rjw.txt
+*/git_readme_rjw.txt
+._*
+*/._*
