@@ -156,6 +156,14 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D,DeltaZ):
 	
 	#equation 13b
 	termb0 = np.log((zpd + f2)/(zmd + f1))
+	# Above can give NaNs if the denominator equals 0.
+	# Fix below if needed, a scalar and vector version
+	if (np.size(rho) == 1):
+		if (zmd + f1 == 0):
+			termb0 = np.float64(0) # Is this reasonable?
+	else:
+		termb0[ np.where(zmd + f1 == 0)[0] ] = np.float64(0) # Is this reasonable?
+
 	termb1 = (a2/4)*(zpd/f2cubed - zmd/f1cubed)
 	Bz = mui2*(termb0 + termb1)
 	

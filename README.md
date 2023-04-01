@@ -36,7 +36,7 @@ python3 setup.py bdist_wheel
 pip3 install --user dist/con2020-X.X.X-py3-none-any.whl
 
 #or directly install using setup.py
-python3 setup.py insall --user
+python3 setup.py install --user
 ```
 
 ## Usage

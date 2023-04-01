@@ -202,15 +202,19 @@ class Model(object):
 				print("Keyword argument {:s} unrecognized, ignoring.".format(k))
 		
 		#now do the checks
-		if self.error_check:
-			ckeys = ['mu_i','r0','r1','d','xt']
-			for k in ckeys:
-				x = getattr(self,k)
-				if (x <= 0) or (np.isfinite(x) == False):
-					raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
+	
+		ckeys = ['mu_i','r0','r1','d']
+		for k in ckeys:
+			x = getattr(self,k)
+			if (x <= 0) or (np.isfinite(x) == False):
+				raise SystemExit("'{:s}' should be greater than 0 and finite".format(k))	
+		# xt could be zero
+		x = getattr(self,'xt')
+		if (x < 0) or (np.isfinite(x) == False):
+			raise SystemExit("'{:s}' should be greater than or equal to 0 and finite".format('xt'))	
 
-			if (np.isfinite(self.xp) == False):
-				raise SystemExit("'xp' should be finite")	
+		if (np.isfinite(self.xp) == False):
+			raise SystemExit("'xp' should be finite")	
 			
 		#set the analytic function to use
 		self._AnalyticFunc = _AnalyticEdwards
@@ -547,6 +551,25 @@ class Model(object):
 		sinp = y0/rho0
 		cosp = x0/rho0
 
+		if np.size(r)==1:
+			if (r == 0):
+				# if r = 0, these values should not matter?
+				cost = np.float64(1)
+				sint = np.float64(0)
+			if (rho0 == 0):
+				sinp = np.float64(0)
+				cosp = np.float64(1)
+		else:
+			ind = np.where(r == 0)[0]
+			if (ind.size != 0):
+				# if r = 0, these values should not matter?
+				cost[ind] = np.float64(1)
+				sint[ind] = np.float64(0)
+			ind = np.where(rho0 == 0)[0]
+			if (ind.size != 0):
+				sinp[ind] = np.float64(0)
+				cosp[ind] = np.float64(1)
+
 		#rotate x and y to align with the current sheet longitude
 		x = rho0*(cosp*self._cosxp + sinp*self._sinxp)
 		y1 = rho0*(sinp*self._cosxp - cosp*self._sinxp)
@@ -606,9 +629,19 @@ class Model(object):
 		'''
 		cosphi1 = x1/rho1
 		sinphi1 = y1/rho1
-		
+
 		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
-		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1
+		# if rho = 0, then bx1 = by1 = 0
+		if np.size(rho1)==1:
+			if (rho1 == 0):
+				Bx1 = np.float64(0)
+				By1 = np.float64(0)
+		else:
+			rho1_eq_0_ind = np.where(rho1 == 0)[0]
+			if (rho1_eq_0_ind.size != 0):
+				Bx1[rho1_eq_0_ind] = np.float64(0)
+				By1[rho1_eq_0_ind] = np.float64(0)
 
 		Bx = Bx1*self._cosxt - Bz1*self._sinxt
 		Bz0 = Bx1*self._sinxt + Bz1*self._cosxt		
@@ -764,11 +797,15 @@ class Model(object):
 		'''		
 		
 		#this now runs in about 60% of the time it used to
-		cosphi1 = x1/rho1
-		sinphi1 = y1/rho1
-		
-		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
-		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
+		if (rho1 > 0):  # rho1 is alwas positive, from above, but could be 0.
+			cosphi1 = x1/rho1
+			sinphi1 = y1/rho1
+
+			Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+			By1 = Brho1*sinphi1 + Bphi1*cosphi1
+		else: # if rho = 0, then bx1 = by1 = 0
+			Bx1 = np.float64(0)
+			By1 = np.float64(0)
 
 		Bx = Bx1*self._cosxt - Bz1*self._sinxt
 		Bz = Bx1*self._sinxt + Bz1*self._cosxt		
@@ -805,8 +842,8 @@ class Model(object):
 		#calculate r
 		r = np.sqrt(x*x + y*y + z*z)
 
-		if np.min(r) <= 0 or np.max(r) >= 200:
-			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
+		if np.min(r) < 0 or np.max(r) >= 200:
+			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >=0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
 
 	def _CheckInputPol(self,r,theta,phi):
@@ -825,8 +862,8 @@ class Model(object):
 			System III east longitude (rad).
 			
 		'''
-		if np.min(r) <= 0 or np.max(r) >= 200:
-			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >0 but <200 only, and not outside that range (did you use km instead?). Returning...')
+		if np.min(r) < 0 or np.max(r) >= 200:
+			raise SystemExit ('ERROR: Radial distance r must be in units of Rj and >=0 but <200 only, and not outside that range (did you use km instead?). Returning...')
 
 		if np.min(theta) < 0 or np.max(theta) > np.pi:
 			raise SystemExit ('ERROR: CoLat must be in radians of 0 to pi only, and not outside that range (did you use degrees instead?). Returning...')
@@ -857,7 +894,10 @@ class Model(object):
 
 		'''
 		r = np.sqrt(rho*rho + z*z)
-		theta = np.arcsin(rho/r)
+		if (r>0):
+			theta = np.arcsin(rho/r)
+		else:
+			theta = np.float64(0)
 		return BphiLMIC(r,theta,self.g,self.r0,self.r1,self.mu_i,self.d,self.DeltaRho,
 						self.DeltaZ,self.wO_open,self.wO_om,self.thetamm,
 						self.dthetamm,self.thetaoc,self.dthetaoc)
@@ -884,13 +924,22 @@ class Model(object):
 
 		'''
 		Bphi = 2.7975*self.i_rho/rho
-		
+		# Above could give Infinities if rho = 0, or NaN is rho = 0 and i_rho=0
+		# deal with this below, separately for scalar_input or vector
 		if np.size(rho) == 1:
-			if abs_z < self.d:
-				Bphi *= (abs_z/self.d)
-			if z > 0:
-				Bphi = -Bphi
+			if (rho > 0):
+				if abs_z < self.d:
+					Bphi *= (abs_z/self.d)
+				if z > 0:
+					Bphi = -Bphi
+			else:
+				Bphi = 0 # Remove Infinity or NaN
 		else:
+			ind = np.where(rho == 0)[0]
+			if (ind.size != 0): # a very very rare occurence
+				Bphi[ind] = np.float64(0) # Remove any Infinity or NaN
+				# will let scaling below on z happen as Bphi will still be 0 anyway
+
 			ind = np.where(abs_z < self.d)[0]
 			if ind.size > 0:
 				Bphi[ind] *= (abs_z[ind]/self.d)
