@@ -7,7 +7,7 @@ The LASP webpage describes the [Community Code](https://eur03.safelinks.protecti
 
 These codes were developed by Fran Bagenal, Marty Brennan, Matt James, Gabby Provan, Aneesah Kamran,  Marissa Vogt, and Rob Wilson, with thanks to Jack Connerney and Masafumi Imai. They are intended for use by the Juno science team and other members of the planetary magnetospheres community. Our contact information is in the documentation PDF file.
 
-In 2023, our efforts were published in [Space Science Reviews](https://link.springer.com/article/10.1007/s11214-023-00961-3) . If using these codes, please reference this SSR paper and the DOI of the particular codes).
+In 2023, our efforts were published in [Space Science Reviews](https://link.springer.com/article/10.1007/s11214-023-00961-3) . If using these codes, please reference this SSR paper and the DOI of the particular codes.
 
 ## Installation
 
