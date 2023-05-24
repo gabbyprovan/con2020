@@ -5,16 +5,9 @@ Python implementation of the Connerney et al., 1981 and Connerney et al., 2020 J
 
 The LASP webpage lists all the [Community Githubs](https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Flasp.colorado.edu%2Fmop%2Fmissions%2Fjuno%2Fcommunity-code%2F&data=05%7C01%7Cgp31%40leicester.ac.uk%7C2eb0d04b2d75428c9bd008db5c013c2c%7Caebecd6a31d44b0195ce8274afe853d9%7C0%7C0%7C638204932610327781%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=WDeAEBt9Sb3PdL%2B6ANqx3DAjQ5sGrO4YhMOig%2B8V%2BE8%3D&reserved=0).
 
-This site was built using [GitHub Pages](https://pages.github.com/).
-For the IDL implementation of this model, see:
-https://github.com/marissav06/con2020_idl
-
-Or for Matlab:
-https://github.com/marissav06/con2020_matlab
-
 These codes were developed by Fran Bagenal, Marty Brennan, Matt James, Gabby Provan, Aneesah Kamran,  Marissa Vogt, and Rob Wilson, with thanks to Jack Connerney and Masafumi Imai. They are intended for use by the Juno science team and other members of the planetary magnetospheres community. Our contact information is in the documentation PDF file.
 
-In 2023, our efforts were published in Space Science Reviews (https://link.springer.com/article/10.1007/s11214-023-00961-3) . If using these codes, please reference this SSR paper and the DOI of the particular codes.
+In 2023, our efforts were published in [Space Science Reviews](https://link.springer.com/article/10.1007/s11214-023-00961-3) . If using these codes, please reference this SSR paper and the DOI of the particular codes).
 
 ## Installation
 
