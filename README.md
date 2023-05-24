@@ -3,10 +3,9 @@
 
 Python implementation of the Connerney et al., 1981 and Connerney et al., 2020 Jovian magnetodisc model. This model provides the magnetic field due to a "washer-shaped" current near to Jupiter's magnetic equator. This model code uses either analytical equations from Edwards et al., 2001 or the numerical integration of the Connerney et al., 1981 equations to provide the magnetodisc field, depending upon proximity to the disc along _z_ and the inner edge of the disc, _r<sub>0</sub>_.
 
-The LASP webpage lists all the [Community Githubs]
-(https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Flasp.colorado.edu%2Fmop%2Fmissions%2Fjuno%2Fcommunity-code%2F&data=05%7C01%7Cgp31%40leicester.ac.uk%7C2eb0d04b2d75428c9bd008db5c013c2c%7Caebecd6a31d44b0195ce8274afe853d9%7C0%7C0%7C638204932610327781%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=WDeAEBt9Sb3PdL%2B6ANqx3DAjQ5sGrO4YhMOig%2B8V%2BE8%3D&reserved=0).
+The LASP webpage lists all the [Community Githubs](https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Flasp.colorado.edu%2Fmop%2Fmissions%2Fjuno%2Fcommunity-code%2F&data=05%7C01%7Cgp31%40leicester.ac.uk%7C2eb0d04b2d75428c9bd008db5c013c2c%7Caebecd6a31d44b0195ce8274afe853d9%7C0%7C0%7C638204932610327781%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=WDeAEBt9Sb3PdL%2B6ANqx3DAjQ5sGrO4YhMOig%2B8V%2BE8%3D&reserved=0).
 
-
+This site was built using [GitHub Pages](https://pages.github.com/).
 For the IDL implementation of this model, see:
 https://github.com/marissav06/con2020_idl
 
