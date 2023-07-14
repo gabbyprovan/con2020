@@ -1,9 +1,14 @@
 import numpy as np
 from scipy.special import jv,j0,j1
-from ._Switcher import _Switcher
-from ._Analytic import _AnalyticEdwards,_FiniteEdwards
-from ._Integrate import _Integrate
-from .lmic import BphiLMIC
+import sys
+sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
+from _Switcher import _Switcher
+sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
+from _Analytic import _AnalyticEdwards,_FiniteEdwards
+sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
+from _Integrate import _Integrate
+sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
+from lmic import BphiLMIC
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -795,17 +800,18 @@ class Model(object):
 			
 		
 		'''		
+		print('rho1', rho1)
+		##this now runs in about 00% of the time it used to
 		
-		#this now runs in about 60% of the time it used to
-		if (rho1 > 0):  # rho1 is alwas positive, from above, but could be 0.
-			cosphi1 = x1/rho1
-			sinphi1 = y1/rho1
+		cosphi1 = x1/rho1
+		sinphi1 = y1/rho1
 
-			Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
-			By1 = Brho1*sinphi1 + Bphi1*cosphi1
-		else: # if rho = 0, then bx1 = by1 = 0
-			Bx1 = np.float64(0)
-			By1 = np.float64(0)
+		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
+		By1 = Brho1*sinphi1 + Bphi1*cosphi1
+		
+		sel1=np.where(rho1 == 0) # if rho = 0, then bx1 = by1 = 0
+		Bx1[sel1] = np.float64(0)
+		By1[sel1] = np.float64(0)
 
 		Bx = Bx1*self._cosxt - Bz1*self._sinxt
 		Bz = Bx1*self._sinxt + Bz1*self._cosxt		
@@ -1303,7 +1309,7 @@ class Model(object):
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
 			   
-		   
+		print('Brho', Brho)   
 		#return to SIII coordinates
 		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
 		
