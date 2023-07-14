@@ -800,8 +800,7 @@ class Model(object):
 			
 		
 		'''		
-		print('rho1', rho1)
-		##this now runs in about 00% of the time it used to
+		##this now runs in about 60% of the time it used to
 		
 		cosphi1 = x1/rho1
 		sinphi1 = y1/rho1
