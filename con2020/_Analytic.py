@@ -148,10 +148,10 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D,DeltaZ):
 	#equation 13a
 	terma0 = (1/rho)*(f1 - f2)
 	terma1 = (rho*a2/4)*(1/f2cubed - 1/f1cubed)
-	#terma2 = (2.0/rho)*z.clip(max=D,min=-D)
-	tanhp = np.tanh((z+D)/DeltaZ)
-	tanhm = np.tanh((z-D)/DeltaZ)
-	terma2 = (1.0/rho)*(D*z*(tanhp+tanhm) + 0.5*(D*D + z*z)*(tanhp-tanhm))
+	terma2 = (2.0/rho)*z.clip(max=D,min=-D)
+	#tanhp = np.tanh((z+D)/DeltaZ)
+	#tanhm = np.tanh((z-D)/DeltaZ)
+	#terma2 = (1.0/rho)*(D*z*(tanhp+tanhm) + 0.5*(D*D + z*z)*(tanhp-tanhm))
 	Brho = mui2*(terma0 + terma1 + terma2)
 	
 	#equation 13b
