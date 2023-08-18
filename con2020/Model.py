@@ -1,14 +1,8 @@
 import numpy as np
 from scipy.special import jv,j0,j1
-import sys
-sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
-from _Switcher import _Switcher
-sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
-from _Analytic import _AnalyticEdwards,_FiniteEdwards
-sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
-from _Integrate import _Integrate
-sys.path.append("/data/sol-ionosphere/juno/gp31/con2020new/con2020/con2020/")
-from lmic import BphiLMIC
+from ._Switcher import _Switcher
+from ._Analytic import _AnalyticEdwards,_FiniteEdwards
+from ._Integrate import _Integrate
 
 class Model(object):
 	def __init__(self,**kwargs):
