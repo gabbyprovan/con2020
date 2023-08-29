@@ -66,7 +66,7 @@ y = 10.0
 z = 6.0
 Bcart = def_model.Field(x,y,z)
 Result:
-Bxyz=[15.57977074, 36.88229249, 63.02051163] nT
+Bxyz=[15.58367964 36.8963783  63.04540543] nT
 Calculated using the default con2020 model keywords and the hybrid approximation.
 
 #Example 2: the model at an array of positions of spherical polar coordinates
@@ -75,7 +75,7 @@ theta = np.array([30.0,35.0])*np.pi/180.0	#colatitude in radians
 phi = np.array([90.0,95.0])*np.pi/180.0	#east longitude in radians
 Bpol = sph_model.Field(r,theta,phi)
 Result:
-Spherical polar Brtp =[63.32354453 ,31.15790459], [-21.01051861 , -6.86773727], [-3.61151705, -2.72626057] nT
+Spherical polar Brtp =[63.31325114 ,31.15605062], [-21.02247982 , -6.8652712], [-3.60747376, -2.72695432] nT
 Cartesian       Bxyz =[3.61151705, 1.6486016], [13.4661294,  12.43672946], [65.34505753, 29.46223351] nT
 Calculated using the default con2020 model keywords and the hybrid approximation.
 ```
