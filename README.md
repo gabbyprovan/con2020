@@ -76,7 +76,7 @@ phi = np.array([90.0,95.0])*np.pi/180.0	#east longitude in radians
 Bpol = sph_model.Field(r,theta,phi)
 Result:
 Spherical polar Brtp =[63.31325114 ,31.15605062], [-21.02247982 , -6.8652712], [-3.60747376, -2.72695432] nT
-Cartesian       Bxyz =[3.61151705, 1.6486016], [13.4661294,  12.43672946], [65.34505753, 29.46223351] nT
+Cartesian       Bxyz =[3.60747376, 1.64920933], [13.450624,  12.43774298], [65.34212379, 29.45930035] nT
 Calculated using the default con2020 model keywords and the hybrid approximation.
 ```
 
