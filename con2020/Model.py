@@ -1035,7 +1035,7 @@ class Model(object):
 		#this bit does two things - it both takes into account the
 		#check2 thing and it makes zc an index in range 0 to 5 as 
 		#opposed to the zcase 1 to 6, so zi = zcase -1
-		zc -= np.int(check2)
+		zc -= int(check2)
 		
 		#do the integration
 		beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho)
