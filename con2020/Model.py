@@ -1301,8 +1301,7 @@ class Model(object):
 			
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
-			   
-		print('Brho', Brho)   
+			     
 		#return to SIII coordinates
 		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
 		
