@@ -1289,6 +1289,10 @@ class Model(object):
 		'''
 		
 		#rotate and check input SIII coordinates to current sheet coords
+		in0=np.float64(in0)
+		in1=np.float64(in1)
+		in2=np.float64(in2)
+		
 		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
 			
 		#create the output arrays
